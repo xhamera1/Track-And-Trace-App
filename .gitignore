@@ -52,3 +52,28 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# IDE / User specific files
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+# Ignores the entire .vscode folder. If you want to share settings,
+# tasks, or launch configurations, you can explicitly un-ignore them:
+# !.vscode/settings.json
+# !.vscode/tasks.json
+# !.vscode/launch.json
+# !.vscode/extensions.json
+.vscode/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# User-specific settings files
+Properties/launchSettings.json
+*.DotSettings.user
