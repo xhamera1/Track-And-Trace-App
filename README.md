@@ -3,5 +3,5 @@ Full-stack web application for a courier Track and Trace system. Built with C# .
 
 
 Website:
-https://track-and-trace-app-gsbndfgegvhgfbhz.polandcentral-01.azurewebsites.net/
-https://track-and-trace-app-gsbndfgegvhgfbhz.polandcentral-01.azurewebsites.net/Users
+- https://track-and-trace-app-gsbndfgegvhgfbhz.polandcentral-01.azurewebsites.net/
+- https://track-and-trace-app-gsbndfgegvhgfbhz.polandcentral-01.azurewebsites.net/Users
