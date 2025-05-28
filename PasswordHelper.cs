@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using _10.Models;
 
 public static class PasswordHelper
 {

@@ -1,0 +1,61 @@
+@* Definiuje model, którego oczekuje ten widok - lista obiektów User *@
+@model IEnumerable<_10.Models.User> 
+
+@{
+    ViewData["Title"] = "Lista Użytkowników";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<p>To jest testowa strona wyświetlająca użytkowników z bazy danych.</p>
+
+@if (Model != null && Model.Any())
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>
+                    @Html.DisplayNameFor(model => model.First().UserId)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.First().Username)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.First().Email)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.First().Role)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.First().CreatedAt)
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Model)
+            {
+                <tr>
+                    <td>
+                        @Html.DisplayFor(modelItem => user.UserId)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => user.Username)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => user.Email)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => user.Role)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => user.CreatedAt)
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>Nie znaleziono żadnych użytkowników w bazie danych lub model jest pusty.</p>
+}

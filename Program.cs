@@ -1,52 +1,29 @@
 using _10.Models;
-using _10.Services;
+using Microsoft.EntityFrameworkCore;
+using _10.Data; 
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllersWithViews();
 
-// Konfiguracja MySqlSettings
-builder.Services.Configure<MySqlSettings>(builder.Configuration.GetSection("MySqlSettings"));
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-var mySqlPassword = Environment.GetEnvironmentVariable("MYSQL_PASSWORD");
-var mySqlUser = Environment.GetEnvironmentVariable("MYSQL_USER");
+// do debugu bo mi nie dizalalo pobieranie z user secrets
+Console.WriteLine("----------------------------------------------------");
+Console.WriteLine($"DEBUG (Program.cs): connection string: '{connectionString}'");
+Console.WriteLine("----------------------------------------------------");
 
-builder.Services.AddOptions<MySqlSettings>()
-    .PostConfigure<ILogger<Program>>((mySqlSettings, logger) =>
-    {
-        if (!string.IsNullOrEmpty(mySqlPassword) && !string.IsNullOrEmpty(mySqlUser))
-        {
-            mySqlSettings.Password = mySqlPassword;
-            mySqlSettings.User = mySqlUser;
-        }
-        else
-        {
-            logger?.LogWarning("MYSQL_PASSWORD or MYSQL_USER environment variable not set. Using password from appsettings.json (if any).");
-        }
-    });
-
-// Rejestracja DataSeederService
-builder.Services.AddScoped<IDataSeederService, DataSeederService>();
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+}
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
+);
 
 var app = builder.Build();
 
-// Uruchomienie DataSeederService
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        var seeder = services.GetRequiredService<IDataSeederService>();
-        await seeder.InitializeAsync();
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while seeding the database.");
-        throw new ApplicationException("Database seeding failed.", ex);
-    }
-}
+
 
 if (!app.Environment.IsDevelopment())
 {
@@ -55,16 +32,12 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseRouting();
-
 app.UseAuthorization();
-
-app.MapStaticAssets();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
-
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
