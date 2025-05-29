@@ -85,6 +85,7 @@ namespace _10.Controllers
                     Username = model.Username,
                     Email = model.Email,
                     Password = PasswordHelper.HashPassword(model.Password), // Remember to hash the password
+                    ApiKey = ApiKeyGenerator.GenerateApiKey(), // Generate a new API key
                     FirstName = model.FirstName,
                     LastName = model.LastName,
                     Birthday = model.Birthday,
