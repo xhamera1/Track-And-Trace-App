@@ -1,6 +1,5 @@
-using _10.Models;
 using Microsoft.EntityFrameworkCore;
-using _10.Data; 
+using _10.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +20,15 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
 );
 
+// Add session services
+builder.Services.AddDistributedMemoryCache(); // Required for session state
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(1); // Set session timeout to 1 hour
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
 var app = builder.Build();
 
 
@@ -34,6 +42,9 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+
+app.UseSession(); // Add session middleware
+
 app.UseAuthorization();
 
 app.MapControllerRoute(

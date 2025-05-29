@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using _10.Models;
+using _10.Attributes; // Add this line
 
 namespace _10.Controllers;
 
+[SessionAuthorize] // Apply to all actions in this controller
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;

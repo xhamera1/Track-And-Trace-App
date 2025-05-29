@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using _10.Models; 
+using _10.Models;
 
-namespace _10.Data 
+namespace _10.Data
 {
     public class ApplicationDbContext : DbContext
     {
@@ -13,7 +13,7 @@ namespace _10.Data
         public DbSet<Package> Packages { get; set; }
         public DbSet<PackageHistory> PackageHistories { get; set; }
         public DbSet<StatusDefinition> StatusDefinitions { get; set; }
-        public DbSet<Address> Addresses { get; set; } 
+        public DbSet<Address> Addresses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -21,23 +21,23 @@ namespace _10.Data
 
             modelBuilder.Entity<User>(entity =>
             {
-                entity.HasKey(e => e.UserId); 
+                entity.HasKey(e => e.UserId);
                 entity.HasIndex(e => e.Username).IsUnique();
                 entity.HasIndex(e => e.Email).IsUnique();
                 entity.HasIndex(e => e.ApiKey).IsUnique();
 
                 entity.Property(e => e.Role)
-                      .HasConversion<string>() 
-                      .HasMaxLength(50);    
+                      .HasConversion<string>()
+                      .HasMaxLength(50);
 
 
-                if (typeof(User).GetProperty("AddressId") != null) 
+                if (typeof(User).GetProperty("AddressId") != null)
                 {
                     entity.HasOne(u => u.Address)
-                          .WithMany(a => a.Users) 
+                          .WithMany(a => a.Users)
                           .HasForeignKey(u => u.AddressId)
-                          .IsRequired(false) 
-                          .OnDelete(DeleteBehavior.SetNull); 
+                          .IsRequired(false)
+                          .OnDelete(DeleteBehavior.SetNull);
                 }
             });
 
@@ -63,17 +63,17 @@ namespace _10.Data
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.Property(e => e.PackageSize)
-                      .HasConversion<string>() 
-                      .HasMaxLength(50);   
+                      .HasConversion<string>()
+                      .HasMaxLength(50);
 
 
                 entity.HasOne(p => p.OriginAddress)
-                      .WithMany(a => a.PackagesWithThisOrigin) 
+                      .WithMany(a => a.PackagesWithThisOrigin)
                       .HasForeignKey(p => p.OriginAddressId)
                       .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(p => p.DestinationAddress)
-                      .WithMany(a => a.PackagesWithThisDestination) 
+                      .WithMany(a => a.PackagesWithThisDestination)
                       .HasForeignKey(p => p.DestinationAddressId)
                       .OnDelete(DeleteBehavior.Restrict);
             });
@@ -81,7 +81,7 @@ namespace _10.Data
             modelBuilder.Entity<StatusDefinition>(entity =>
             {
                 entity.HasKey(e => e.StatusId);
-                entity.HasIndex(e => e.Name).IsUnique(); 
+                entity.HasIndex(e => e.Name).IsUnique();
             });
 
             // Konfiguracja dla encji PackageHistory

@@ -1,0 +1,76 @@
+@model _10.Models.RegisterViewModel
+
+@{ ViewData["Title"] = "Register"; }
+
+<h2>Register</h2>
+
+<form asp-action="Register" method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div>
+        <label asp-for="Username"></label>
+        <input asp-for="Username" />
+        <span asp-validation-for="Username" class="text-danger"></span>
+    </div>
+    <div>
+        <label asp-for="Email"></label>
+        <input asp-for="Email" />
+        <span asp-validation-for="Email" class="text-danger"></span>
+    </div>
+    <div>
+        <label asp-for="Password"></label>
+        <input asp-for="Password" />
+        <span asp-validation-for="Password" class="text-danger"></span>
+    </div>
+    <div>
+        <label asp-for="ConfirmPassword"></label>
+        <input asp-for="ConfirmPassword" />
+        <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+    </div>
+    <div>
+        <label asp-for="FirstName"></label>
+        <input asp-for="FirstName" />
+        <span asp-validation-for="FirstName" class="text-danger"></span>
+    </div>
+    <div>
+        <label asp-for="LastName"></label>
+        <input asp-for="LastName" />
+        <span asp-validation-for="LastName" class="text-danger"></span>
+    </div>
+    <div>
+        <label asp-for="Birthday"></label>
+        <input asp-for="Birthday" />
+        <span asp-validation-for="Birthday" class="text-danger"></span>
+    </div>
+    <div>
+        <label asp-for="Street"></label>
+        <input asp-for="Street" />
+        <span asp-validation-for="Street" class="text-danger"></span>
+    </div>
+    <div>
+        <label asp-for="City"></label>
+        <input asp-for="City" />
+        <span asp-validation-for="City" class="text-danger"></span>
+    </div>
+    <div>
+        <label asp-for="Country"></label>
+        <input asp-for="Country" />
+        <span asp-validation-for="Country" class="text-danger"></span>
+    </div>
+    <div>
+        <label asp-for="ZipCode"></label>
+        <input asp-for="ZipCode" />
+        <span asp-validation-for="ZipCode" class="text-danger"></span>
+    </div>
+    <div>
+        <label asp-for="IsCourier">Courier</label>
+        <input asp-for="IsCourier" type="checkbox" />
+        <span asp-validation-for="IsCourier"></span>
+    </div>
+    <div>
+        <button type="submit">Register</button>
+    </div>
+</form>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
