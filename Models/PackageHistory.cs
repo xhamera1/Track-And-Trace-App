@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace _10.Models
 {
+    [Table("PackageHistory")] // Add this line to specify the table name
     public class PackageHistory
     {
         [Key]
@@ -14,20 +15,20 @@ namespace _10.Models
         [Required]
         public int PackageId { get; set; }
         [ForeignKey("PackageId")]
-        public virtual Package Package { get; set; }
+        public virtual Package Package { get; set; } = null!;
 
         [Required]
         public int StatusId { get; set; }
         [ForeignKey("StatusId")]
-        public virtual StatusDefinition Status { get; set; }
+        public virtual StatusDefinition Status { get; set; } = null!;
 
         [Required]
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow; 
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
-        [Column(TypeName = "decimal(10, 7)")] 
-        public decimal? Longitude { get; set; } 
+        [Column(TypeName = "decimal(10, 7)")]
+        public decimal? Longitude { get; set; }
 
-        [Column(TypeName = "decimal(10, 7)")] 
-        public decimal? Latitude { get; set; } 
+        [Column(TypeName = "decimal(10, 7)")]
+        public decimal? Latitude { get; set; }
     }
 }

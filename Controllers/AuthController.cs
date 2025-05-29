@@ -70,15 +70,31 @@ namespace _10.Controllers
                     return View(model);
                 }
 
-                var address = new Address
+                // Check if address already exists
+                var existingAddress = await _context.Addresses
+                    .FirstOrDefaultAsync(a => a.Street == model.Street &&
+                                            a.City == model.City &&
+                                            a.ZipCode == model.ZipCode &&
+                                            a.Country == model.Country);
+
+                Address addressToUse;
+                if (existingAddress != null)
                 {
-                    Street = model.Street,
-                    City = model.City,
-                    ZipCode = model.ZipCode,
-                    Country = model.Country
-                };
-                _context.Addresses.Add(address);
-                await _context.SaveChangesAsync(); // Save address to get AddressId
+                    addressToUse = existingAddress;
+                }
+                else
+                {
+                    var newAddress = new Address
+                    {
+                        Street = model.Street,
+                        City = model.City,
+                        ZipCode = model.ZipCode,
+                        Country = model.Country
+                    };
+                    _context.Addresses.Add(newAddress);
+                    await _context.SaveChangesAsync(); // Save new address to get AddressId
+                    addressToUse = newAddress;
+                }
 
                 var user = new User
                 {
@@ -89,7 +105,7 @@ namespace _10.Controllers
                     FirstName = model.FirstName,
                     LastName = model.LastName,
                     Birthday = model.Birthday,
-                    AddressId = address.AddressId,
+                    AddressId = addressToUse.AddressId, // Use the ID of the existing or new address
                     Role = model.IsCourier ? UserRole.Courier : UserRole.User, // Set role based on IsCourier
                     CreatedAt = DateTime.UtcNow
                 };

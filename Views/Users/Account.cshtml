@@ -1,0 +1,94 @@
+@model _10.Models.AccountViewModel
+
+@{ ViewData["Title"] = "Account Details"; }
+
+<h2>@ViewData["Title"]</h2>
+
+<div>
+    <a asp-action="EditAccount" class="btn btn-primary mb-3">Edit Account</a>
+</div>
+
+<div>
+    <h4>User Information</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            Username
+        </dt>
+        <dd class="col-sm-10">
+            @Model.Username
+        </dd>
+        <dt class="col-sm-2">
+            Email
+        </dt>
+        <dd class="col-sm-10">
+            @Model.Email
+        </dd>
+        <dt class="col-sm-2">
+            First Name
+        </dt>
+        <dd class="col-sm-10">
+            @Model.FirstName
+        </dd>
+        <dt class="col-sm-2">
+            Last Name
+        </dt>
+        <dd class="col-sm-10">
+            @Model.LastName
+        </dd>
+        <dt class="col-sm-2">
+            Birthday
+        </dt>
+        <dd class="col-sm-10">
+            @Model.Birthday.ToShortDateString()
+        </dd>
+        <dt class="col-sm-2">
+            Role
+        </dt>
+        <dd class="col-sm-10">
+            @Model.Role
+        </dd>
+    </dl>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.Street)) // Check if address details are available
+{
+<div>
+    <h4>Address Information</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            Street
+        </dt>
+        <dd class="col-sm-10">
+            @Model.Street
+        </dd>
+        <dt class="col-sm-2">
+            City
+        </dt>
+        <dd class="col-sm-10">
+            @Model.City
+        </dd>
+        <dt class="col-sm-2">
+            Zip Code
+        </dt>
+        <dd class="col-sm-10">
+            @Model.ZipCode
+        </dd>
+        <dt class="col-sm-2">
+            Country
+        </dt>
+        <dd class="col-sm-10">
+            @Model.Country
+        </dd>
+    </dl>
+</div>
+}
+else
+{
+<div>
+    <h4>Address Information</h4>
+    <hr />
+    <p>No address information available.</p>
+</div>
+}

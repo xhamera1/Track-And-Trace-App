@@ -77,3 +77,8 @@ nunit-*.xml
 # User-specific settings files
 Properties/launchSettings.json
 *.DotSettings.user
+
+.DS_Store
+
+appsettings.json
+appsettings.Development.json

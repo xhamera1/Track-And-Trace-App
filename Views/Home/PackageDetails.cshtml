@@ -1,0 +1,103 @@
+@model _10.Models.Package
+
+@{
+    ViewData["Title"] = "Package Details";
+}
+
+<h1>Package Details</h1>
+
+<div>
+    <h4>Package</h4>
+    <hr />
+    <dl class="row">
+        <dt class = "col-sm-2">
+            Tracking Number
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.TrackingNumber)
+        </dd>
+        <dt class = "col-sm-2">
+            Sender
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SenderUser.Username)
+        </dd>
+        <dt class = "col-sm-2">
+            Recipient
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.RecipientUser.Username)
+        </dd>
+        <dt class = "col-sm-2">
+            Current Status
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.CurrentStatus.Name)
+        </dd>
+        <dt class = "col-sm-2">
+            Package Size
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.PackageSize)
+        </dd>
+        <dt class = "col-sm-2">
+            Weight (kg)
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.WeightInKg)
+        </dd>
+        <dt class = "col-sm-2">
+            Submission Date
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.SubmissionDate)
+        </dd>
+        <dt class = "col-sm-2">
+            Notes
+        </dt>
+        <dd class = "col-sm-10">
+            @Html.DisplayFor(model => model.Notes)
+        </dd>
+    </dl>
+</div>
+
+@if (Model.History != null && Model.History.Any())
+{
+    <h4>Package History</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Status</th>
+                <th>Location</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var historyEntry in Model.History.OrderByDescending(h => h.Timestamp))
+            {
+                <tr>
+                    <td>@historyEntry.Timestamp</td>
+                    <td>@historyEntry.Status.Name</td>
+                    <td>
+                        @if (historyEntry.Latitude.HasValue && historyEntry.Longitude.HasValue)
+                        {
+                            <span>Lat: @historyEntry.Latitude, Lon: @historyEntry.Longitude</span>
+                        }
+                        else
+                        {
+                            <span>N/A</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No history available for this package.</p>
+}
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
