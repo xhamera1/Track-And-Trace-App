@@ -124,3 +124,108 @@ INSERT IGNORE INTO `StatusDefinitions` (`Name`, `Description`) VALUES
 
 -- Insert a Sample Package
 -- Uwaga: W
+
+
+
+-- Paczka 1: Aktywna, status "Sent", przypisana do kurier_waw
+-- Nadawca: jan_kowalski (UserId=2), Adres nadania: ul. Piękna 5A, Warszawa (AddressId=2)
+-- Odbiorca: anna_limanowska (UserId=3), Adres odbioru: ul. Sezamkowa 12, Gdańsk (AddressId=4)
+INSERT INTO `Packages` (
+    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`, 
+    `PackageSize`, `WeightInKg`, `Notes`, 
+    `OriginAddressId`, `DestinationAddressId`, 
+    `SubmissionDate`, `StatusId`, `Longitude`, `Latitude`
+) VALUES (
+    'TT20250530001', 2, 3, 4, 
+    'Medium', 2.5, 'Ostrożnie, szkło.',
+    2, 4,
+    NOW(), (SELECT StatusId FROM StatusDefinitions WHERE Name = 'Sent'), 19.9449799, 50.0614300 -- Przykładowa lokalizacja początkowa (Kraków)
+);
+SET @package1_id = LAST_INSERT_ID();
+INSERT INTO `PackageHistory` (`PackageId`, `StatusId`, `Timestamp`, `Longitude`, `Latitude`) VALUES
+(@package1_id, (SELECT StatusId FROM StatusDefinitions WHERE Name = 'Sent'), NOW(), 19.9449799, 50.0614300);
+
+
+-- Paczka 2: Aktywna, status "In Delivery", przypisana do kurier_waw
+-- Nadawca: anna_limanowska (UserId=3), Adres nadania: Aleje Jerozolimskie 100, Warszawa (AddressId=3)
+-- Odbiorca: jan_kowalski (UserId=2), Adres odbioru: ul. Piękna 5A, Warszawa (AddressId=2)
+INSERT INTO `Packages` (
+    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`, 
+    `PackageSize`, `WeightInKg`, `Notes`, 
+    `OriginAddressId`, `DestinationAddressId`, 
+    `SubmissionDate`, `StatusId`, `Longitude`, `Latitude`
+) VALUES (
+    'TT20250530002', 3, 2, 4,
+    'Small', 0.8, 'Dokumenty pilne.',
+    3, 2,
+    DATE_SUB(NOW(), INTERVAL 1 HOUR), (SELECT StatusId FROM StatusDefinitions WHERE Name = 'In Delivery'), 20.9923300, 52.2286900 -- Przykładowa lokalizacja (w drodze w Warszawie)
+);
+SET @package2_id = LAST_INSERT_ID();
+INSERT INTO `PackageHistory` (`PackageId`, `StatusId`, `Timestamp`) VALUES
+(@package2_id, (SELECT StatusId FROM StatusDefinitions WHERE Name = 'Sent'), DATE_SUB(NOW(), INTERVAL 2 HOUR)); -- Historia: najpierw była 'Sent'
+INSERT INTO `PackageHistory` (`PackageId`, `StatusId`, `Timestamp`, `Longitude`, `Latitude`) VALUES
+(@package2_id, (SELECT StatusId FROM StatusDefinitions WHERE Name = 'In Delivery'), DATE_SUB(NOW(), INTERVAL 1 HOUR), 20.9923300, 52.2286900);
+
+
+-- Paczka 3: Już dostarczona, status "Delivered", przypisana do kurier_waw
+-- Nadawca: jan_kowalski (UserId=2), Adres nadania: ul. Piękna 5A, Warszawa (AddressId=2)
+-- Odbiorca: admin (UserId=1), Adres odbioru: Rynek Główny 1, Kraków (AddressId=1)
+INSERT INTO `Packages` (
+    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`, 
+    `PackageSize`, `WeightInKg`, `Notes`, 
+    `OriginAddressId`, `DestinationAddressId`, 
+    `SubmissionDate`, `DeliveryDate`, `StatusId`, `Longitude`, `Latitude`
+) VALUES (
+    'TT20250529003', 2, 1, 4,
+    'Large', 10.2, 'Sprzęt elektroniczny.',
+    2, 1,
+    DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 2 HOUR), (SELECT StatusId FROM StatusDefinitions WHERE Name = 'Delivered'), 19.9445440, 50.0618900 -- Lokalizacja dostarczenia (Kraków)
+);
+SET @package3_id = LAST_INSERT_ID();
+INSERT INTO `PackageHistory` (`PackageId`, `StatusId`, `Timestamp`) VALUES
+(@package3_id, (SELECT StatusId FROM StatusDefinitions WHERE Name = 'Sent'), DATE_SUB(NOW(), INTERVAL 1 DAY));
+INSERT INTO `PackageHistory` (`PackageId`, `StatusId`, `Timestamp`, `Longitude`, `Latitude`) VALUES
+(@package3_id, (SELECT StatusId FROM StatusDefinitions WHERE Name = 'In Delivery'), DATE_SUB(NOW(), INTERVAL 5 HOUR), 20.5, 51.5); -- Przykładowa lokalizacja w drodze
+INSERT INTO `PackageHistory` (`PackageId`, `StatusId`, `Timestamp`, `Longitude`, `Latitude`) VALUES
+(@package3_id, (SELECT StatusId FROM StatusDefinitions WHERE Name = 'Delivered'), DATE_SUB(NOW(), INTERVAL 2 HOUR), 19.9445440, 50.0618900);
+
+
+-- Paczka 4: Aktywna, status "In Delivery", przypisana do kurier_waw, inna trasa
+-- Nadawca: anna_limanowska (UserId=3), Adres nadania: Aleje Jerozolimskie 100, Warszawa (AddressId=3)
+-- Odbiorca: jan_kowalski (UserId=2), Adres odbioru: ul. Sezamkowa 12, Gdańsk (AddressId=4)
+INSERT INTO `Packages` (
+    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`, 
+    `PackageSize`, `WeightInKg`, `Notes`, 
+    `OriginAddressId`, `DestinationAddressId`, 
+    `SubmissionDate`, `StatusId`, `Longitude`, `Latitude`
+) VALUES (
+    'TT20250530004', 3, 2, 4,
+    'Medium', 3.0, 'Książki.',
+    3, 4,
+    DATE_SUB(NOW(), INTERVAL 30 MINUTE), (SELECT StatusId FROM StatusDefinitions WHERE Name = 'In Delivery'), 18.6466384, 54.3520252 -- Lokalizacja (Gdańsk)
+);
+SET @package4_id = LAST_INSERT_ID();
+INSERT INTO `PackageHistory` (`PackageId`, `StatusId`, `Timestamp`) VALUES
+(@package4_id, (SELECT StatusId FROM StatusDefinitions WHERE Name = 'Sent'), DATE_SUB(NOW(), INTERVAL 1 HOUR));
+INSERT INTO `PackageHistory` (`PackageId`, `StatusId`, `Timestamp`, `Longitude`, `Latitude`) VALUES
+(@package4_id, (SELECT StatusId FROM StatusDefinitions WHERE Name = 'In Delivery'), DATE_SUB(NOW(), INTERVAL 30 MINUTE), 18.6466384, 54.3520252);
+
+
+-- Paczka 5: Aktywna, status "Sent", przypisana do kurier_waw, oczekuje na podjęcie
+-- Nadawca: admin (UserId=1), Adres nadania: Rynek Główny 1, Kraków (AddressId=1)
+-- Odbiorca: anna_limanowska (UserId=3), Adres odbioru: Aleje Jerozolimskie 100, Warszawa (AddressId=3)
+INSERT INTO `Packages` (
+    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`, 
+    `PackageSize`, `WeightInKg`, `Notes`, 
+    `OriginAddressId`, `DestinationAddressId`, 
+    `SubmissionDate`, `StatusId`, `Longitude`, `Latitude`
+) VALUES (
+    'TT20250530005', 1, 3, 4,
+    'Small', 1.1, 'Ważne dokumenty.',
+    1, 3,
+    DATE_SUB(NOW(), INTERVAL 5 MINUTE), (SELECT StatusId FROM StatusDefinitions WHERE Name = 'Sent'), 19.9449799, 50.0614300 -- Lokalizacja nadania (Kraków)
+);
+SET @package5_id = LAST_INSERT_ID();
+INSERT INTO `PackageHistory` (`PackageId`, `StatusId`, `Timestamp`, `Longitude`, `Latitude`) VALUES
+(@package5_id, (SELECT StatusId FROM StatusDefinitions WHERE Name = 'Sent'), DATE_SUB(NOW(), INTERVAL 5 MINUTE), 19.9449799, 50.0614300);
+
