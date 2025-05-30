@@ -2,59 +2,97 @@
 
 @{ ViewData["Title"] = "Edit Account"; }
 
-<h2>@ViewData["Title"]</h2>
+<div class="page-header">
+    <h1><i class="fas fa-user-edit me-3"></i>Edit Account</h1>
+    <p>Update your personal information and address details</p>
+</div>
 
 <div class="row">
-    <div class="col-md-4">
-        <form asp-action="EditAccount">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow-custom">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Account Information</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="EditAccount" id="editForm">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-            <h4>User Information</h4>
-            <hr />
-            <div class="form-group">
-                <label asp-for="FirstName" class="control-label"></label>
-                <input asp-for="FirstName" class="form-control" />
-                <span asp-validation-for="FirstName" class="text-danger"></span>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3"><i class="fas fa-user me-2"></i>Personal Information</h6>
+                            <div class="form-group mb-3">
+                                <label asp-for="FirstName" class="form-label">
+                                    <i class="fas fa-user me-1"></i>First Name
+                                </label>
+                                <input asp-for="FirstName" class="form-control form-control-lg" placeholder="Enter your first name" />
+                                <span asp-validation-for="FirstName" class="text-danger"></span>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label asp-for="LastName" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Last Name
+                                </label>
+                                <input asp-for="LastName" class="form-control form-control-lg" placeholder="Enter your last name" />
+                                <span asp-validation-for="LastName" class="text-danger"></span>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label asp-for="Birthday" class="form-label">
+                                    <i class="fas fa-calendar me-1"></i>Birthday
+                                </label>
+                                <input asp-for="Birthday" class="form-control form-control-lg" type="date" />
+                                <span asp-validation-for="Birthday" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3"><i class="fas fa-map-marker-alt me-2"></i>Address Information</h6>
+                            <div class="form-group mb-3">
+                                <label asp-for="Street" class="form-label">
+                                    <i class="fas fa-road me-1"></i>Street Address
+                                </label>
+                                <input asp-for="Street" class="form-control form-control-lg" placeholder="Enter street address" />
+                                <span asp-validation-for="Street" class="text-danger"></span>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label asp-for="City" class="form-label">
+                                    <i class="fas fa-city me-1"></i>City
+                                </label>
+                                <input asp-for="City" class="form-control form-control-lg" placeholder="Enter city" />
+                                <span asp-validation-for="City" class="text-danger"></span>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="ZipCode" class="form-label">
+                                            <i class="fas fa-mail-bulk me-1"></i>Zip Code
+                                        </label>
+                                        <input asp-for="ZipCode" class="form-control form-control-lg" placeholder="Enter zip code" />
+                                        <span asp-validation-for="ZipCode" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Country" class="form-label">
+                                            <i class="fas fa-globe me-1"></i>Country
+                                        </label>
+                                        <input asp-for="Country" class="form-control form-control-lg" placeholder="Enter country" />
+                                        <span asp-validation-for="Country" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
             </div>
-            <div class="form-group">
-                <label asp-for="LastName" class="control-label"></label>
-                <input asp-for="LastName" class="form-control" />
-                <span asp-validation-for="LastName" class="text-danger"></span>
+            <div class="card-footer bg-light">
+                <div class="d-flex justify-content-between">
+                    <a asp-action="Account" class="btn btn-outline-secondary btn-lg">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </a>
+                    <button type="submit" form="editForm" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save me-1"></i>Save Changes
+                    </button>
+                </div>
             </div>
-            <div class="form-group">
-                <label asp-for="Birthday" class="control-label"></label>
-                <input asp-for="Birthday" class="form-control" />
-                <span asp-validation-for="Birthday" class="text-danger"></span>
-            </div>
-
-            <h4>Address Information</h4>
-            <hr />
-            <div class="form-group">
-                <label asp-for="Street" class="control-label"></label>
-                <input asp-for="Street" class="form-control" />
-                <span asp-validation-for="Street" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="City" class="control-label"></label>
-                <input asp-for="City" class="form-control" />
-                <span asp-validation-for="City" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="ZipCode" class="control-label"></label>
-                <input asp-for="ZipCode" class="form-control" />
-                <span asp-validation-for="ZipCode" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Country" class="control-label"></label>
-                <input asp-for="Country" class="form-control" />
-                <span asp-validation-for="Country" class="text-danger"></span>
-            </div>
-
-            <div class="form-group mt-3">
-                <input type="submit" value="Save" class="btn btn-primary" />
-                <a asp-action="Account" class="btn btn-secondary">Cancel</a>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 

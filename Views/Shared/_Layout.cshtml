@@ -9,64 +9,81 @@
     <title>@ViewData["Title"] - Track & Trace App</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/track-trace-theme.css" asp-append-version="true" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Track & Trace</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+        <nav class="navbar navbar-expand-lg navbar-toggleable-lg">
+            <div class="container">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <i class="fas fa-shipping-fast me-2"></i>Track & Trace
+                </a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
 
-                        @if (User.Identity != null && User.Identity.IsAuthenticated)
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
+                        @if (Context.Session.GetString("UserId") != null)
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Users" asp-action="Account">Account</a>
+                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">
+                                    <i class="fas fa-home me-1"></i>Dashboard
+                                </a>
                             </li>
 
-                            @if (User.IsInRole("User"))
+                            @if (Context.Session.GetString("UserRole") == "User")
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="Package" asp-action="SendPackage">Send</a>
+                                    <a class="nav-link" asp-area="" asp-controller="Package" asp-action="SendPackage">
+                                        <i class="fas fa-paper-plane me-1"></i>Send Package
+                                    </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="Package" asp-action="PickUp">Pick Up</a>
+                                    <a class="nav-link" asp-area="" asp-controller="Package" asp-action="PickUp">
+                                        <i class="fas fa-box-open me-1"></i>Pick Up
+                                    </a>
                                 </li>
-                                // Możesz tu dodać inne linki specyficzne dla roli "User"
                             }
 
-                            @if (User.IsInRole("Courier") || User.IsInRole("Admin")) // Admin też może mieć dostęp do panelu kuriera
+                            @if (Context.Session.GetString("UserRole") == "Courier")
                             {
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle text-dark" href="#" id="courierDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Courier Panel
+                                    <a class="nav-link dropdown-toggle" href="#" id="courierDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-truck me-1"></i>Courier Tools
                                     </a>
-                                    <ul class="dropdown-menu" aria-labelledby="courierDropdown">
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="Courier" asp-action="ActivePackages">Active Packages</a></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="Courier" asp-action="DeliveredPackages">Delivered Packages</a></li>
-                                        <li><a class="dropdown-item" asp-area="" asp-controller="Courier" asp-action="AllMyPackages">All My Packages</a></li>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="Courier" asp-action="ActivePackages">
+                                            <i class="fas fa-tasks me-1"></i>Active Packages
+                                        </a></li>
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="Courier" asp-action="DeliveredPackages">
+                                            <i class="fas fa-check-circle me-1"></i>Delivered Packages
+                                        </a></li>
+                                        <li><a class="dropdown-item" asp-area="" asp-controller="Courier" asp-action="AllMyPackages">
+                                            <i class="fas fa-list me-1"></i>All My Packages
+                                        </a></li>
                                     </ul>
                                 </li>
                             }
 
-                            @if (User.IsInRole("Admin"))
+                            @if (Context.Session.GetString("UserRole") == "Admin")
                             {
                                 <li class="nav-item">
-                                     <a class="nav-link text-dark" asp-area="" asp-controller="Users" asp-action="Index">Manage Users</a>
+                                    <a class="nav-link" asp-area="" asp-controller="Users" asp-action="Index">
+                                        <i class="fas fa-users me-1"></i>Manage Users
+                                    </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="Package" asp-action="PickUp">Pick Up</a>
+                                    <a class="nav-link" asp-area="" asp-controller="Package" asp-action="PickUp">
+                                        <i class="fas fa-box-open me-1"></i>Pick Up
+                                    </a>
                                 </li>
                             }
                         }
                     </ul>
+
                     <ul class="navbar-nav">
                         @{
                             var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
@@ -74,22 +91,39 @@
                             var isAuthPage = currentController == "Auth" && (currentAction == "Login" || currentAction == "Register");
                         }
 
-                        @if (User.Identity != null && User.Identity.IsAuthenticated && !isAuthPage)
+                        @if (Context.Session.GetString("UserId") != null && !isAuthPage)
                         {
-                            <li class="nav-item">
-                                <form class="form-inline" asp-controller="Auth" asp-action="Logout" method="post">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="nav-link btn btn-link text-dark">Logout</button>
-                                </form>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-user-circle me-1"></i>@Context.Session.GetString("Username")
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Users" asp-action="Account">
+                                        <i class="fas fa-user me-1"></i>My Account
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form class="dropdown-item p-0" asp-controller="Auth" asp-action="Logout" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-link w-100 text-start text-decoration-none">
+                                                <i class="fas fa-sign-out-alt me-1"></i>Logout
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
                             </li>
                         }
-                        else if (User.Identity != null && !User.Identity.IsAuthenticated)
+                        else if (!isAuthPage)
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Auth" asp-action="Login">Login</a>
+                                <a class="nav-link" asp-area="" asp-controller="Auth" asp-action="Login">
+                                    <i class="fas fa-sign-in-alt me-1"></i>Login
+                                </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Auth" asp-action="Register">Register</a>
+                                <a class="nav-link" asp-area="" asp-controller="Auth" asp-action="Register">
+                                    <i class="fas fa-user-plus me-1"></i>Register
+                                </a>
                             </li>
                         }
                     </ul>
@@ -97,29 +131,31 @@
             </div>
         </nav>
     </header>
-    <div class="container">
+
+    <div class="container main-content">
         <main role="main" class="pb-3">
             @if (TempData["SuccessMessage"] != null)
             {
                 <div class="alert alert-success" role="alert">
-                    @TempData["SuccessMessage"]
+                    <i class="fas fa-check-circle me-2"></i>@TempData["SuccessMessage"]
                 </div>
             }
             @if (TempData["ErrorMessage"] != null)
             {
                 <div class="alert alert-danger" role="alert">
-                    @TempData["ErrorMessage"]
+                    <i class="fas fa-exclamation-circle me-2"></i>@TempData["ErrorMessage"]
                 </div>
             }
             @if (TempData["InfoMessage"] != null)
             {
                 <div class="alert alert-info" role="alert">
-                    @TempData["InfoMessage"]
+                    <i class="fas fa-info-circle me-2"></i>@TempData["InfoMessage"]
                 </div>
             }
             @RenderBody()
         </main>
     </div>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

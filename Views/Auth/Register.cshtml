@@ -2,74 +2,150 @@
 
 @{ ViewData["Title"] = "Register"; }
 
-<h2>Register</h2>
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-custom">
+            <div class="card-header text-center">
+                <h2 class="mb-0">
+                    <i class="fas fa-user-plus me-2"></i>Create Account
+                </h2>
+                <p class="mb-0 mt-2">Join the Track & Trace community</p>
+            </div>
+            <div class="card-body">
+                <form asp-action="Register" method="post">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 
-<form asp-action="Register" method="post">
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-    <div>
-        <label asp-for="Username"></label>
-        <input asp-for="Username" />
-        <span asp-validation-for="Username" class="text-danger"></span>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label asp-for="Username" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Username
+                                </label>
+                                <input asp-for="Username" class="form-control" placeholder="Enter username" />
+                                <span asp-validation-for="Username" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label asp-for="Email" class="form-label">
+                                    <i class="fas fa-envelope me-1"></i>Email
+                                </label>
+                                <input asp-for="Email" class="form-control" placeholder="Enter email" />
+                                <span asp-validation-for="Email" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label asp-for="Password" class="form-label">
+                                    <i class="fas fa-lock me-1"></i>Password
+                                </label>
+                                <input asp-for="Password" type="password" class="form-control" placeholder="Enter password" />
+                                <span asp-validation-for="Password" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label asp-for="ConfirmPassword" class="form-label">
+                                    <i class="fas fa-lock me-1"></i>Confirm Password
+                                </label>
+                                <input asp-for="ConfirmPassword" type="password" class="form-control" placeholder="Confirm password" />
+                                <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr />
+                    <h5 class="text-primary mb-3"><i class="fas fa-id-card me-2"></i>Personal Information</h5>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label asp-for="FirstName" class="form-label">First Name</label>
+                                <input asp-for="FirstName" class="form-control" placeholder="Enter first name" />
+                                <span asp-validation-for="FirstName" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label asp-for="LastName" class="form-label">Last Name</label>
+                                <input asp-for="LastName" class="form-control" placeholder="Enter last name" />
+                                <span asp-validation-for="LastName" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Birthday" class="form-label">
+                            <i class="fas fa-calendar me-1"></i>Birthday
+                        </label>
+                        <input asp-for="Birthday" type="date" class="form-control" />
+                        <span asp-validation-for="Birthday" class="text-danger"></span>
+                    </div>
+
+                    <hr />
+                    <h5 class="text-primary mb-3"><i class="fas fa-map-marker-alt me-2"></i>Address Information</h5>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Street" class="form-label">Street Address</label>
+                        <input asp-for="Street" class="form-control" placeholder="Enter street address" />
+                        <span asp-validation-for="Street" class="text-danger"></span>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label asp-for="City" class="form-label">City</label>
+                                <input asp-for="City" class="form-control" placeholder="Enter city" />
+                                <span asp-validation-for="City" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group mb-3">
+                                <label asp-for="ZipCode" class="form-label">ZIP Code</label>
+                                <input asp-for="ZipCode" class="form-control" placeholder="ZIP" />
+                                <span asp-validation-for="ZipCode" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group mb-3">
+                                <label asp-for="Country" class="form-label">Country</label>
+                                <input asp-for="Country" class="form-control" placeholder="Country" />
+                                <span asp-validation-for="Country" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <div class="form-check">
+                            <input asp-for="IsCourier" type="checkbox" class="form-check-input" id="courierCheck" />
+                            <label asp-for="IsCourier" class="form-check-label" for="courierCheck">
+                                <i class="fas fa-truck me-1"></i>I want to register as a courier
+                            </label>
+                            <span asp-validation-for="IsCourier" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-user-plus me-2"></i>Create Account
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center bg-light">
+                <p class="mb-0">
+                    Already have an account?
+                    <a asp-action="Login" class="text-decoration-none fw-medium">
+                        <i class="fas fa-sign-in-alt me-1"></i>Sign in here
+                    </a>
+                </p>
+            </div>
+        </div>
     </div>
-    <div>
-        <label asp-for="Email"></label>
-        <input asp-for="Email" />
-        <span asp-validation-for="Email" class="text-danger"></span>
-    </div>
-    <div>
-        <label asp-for="Password"></label>
-        <input asp-for="Password" />
-        <span asp-validation-for="Password" class="text-danger"></span>
-    </div>
-    <div>
-        <label asp-for="ConfirmPassword"></label>
-        <input asp-for="ConfirmPassword" />
-        <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
-    </div>
-    <div>
-        <label asp-for="FirstName"></label>
-        <input asp-for="FirstName" />
-        <span asp-validation-for="FirstName" class="text-danger"></span>
-    </div>
-    <div>
-        <label asp-for="LastName"></label>
-        <input asp-for="LastName" />
-        <span asp-validation-for="LastName" class="text-danger"></span>
-    </div>
-    <div>
-        <label asp-for="Birthday"></label>
-        <input asp-for="Birthday" />
-        <span asp-validation-for="Birthday" class="text-danger"></span>
-    </div>
-    <div>
-        <label asp-for="Street"></label>
-        <input asp-for="Street" />
-        <span asp-validation-for="Street" class="text-danger"></span>
-    </div>
-    <div>
-        <label asp-for="City"></label>
-        <input asp-for="City" />
-        <span asp-validation-for="City" class="text-danger"></span>
-    </div>
-    <div>
-        <label asp-for="Country"></label>
-        <input asp-for="Country" />
-        <span asp-validation-for="Country" class="text-danger"></span>
-    </div>
-    <div>
-        <label asp-for="ZipCode"></label>
-        <input asp-for="ZipCode" />
-        <span asp-validation-for="ZipCode" class="text-danger"></span>
-    </div>
-    <div>
-        <label asp-for="IsCourier">Courier</label>
-        <input asp-for="IsCourier" type="checkbox" />
-        <span asp-validation-for="IsCourier"></span>
-    </div>
-    <div>
-        <button type="submit">Register</button>
-    </div>
-</form>
+</div>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

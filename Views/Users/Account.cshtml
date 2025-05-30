@@ -1,94 +1,96 @@
 @model _10.Models.AccountViewModel
 
-@{ ViewData["Title"] = "Account Details"; }
+@{ ViewData["Title"] = "My Account"; }
 
-<h2>@ViewData["Title"]</h2>
-
-<div>
-    <a asp-action="EditAccount" class="btn btn-primary mb-3">Edit Account</a>
+<div class="page-header">
+    <h1><i class="fas fa-user-circle me-3"></i>My Account</h1>
+    <p>Manage your personal information and account settings</p>
 </div>
 
-<div>
-    <h4>User Information</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            Username
-        </dt>
-        <dd class="col-sm-10">
-            @Model.Username
-        </dd>
-        <dt class="col-sm-2">
-            Email
-        </dt>
-        <dd class="col-sm-10">
-            @Model.Email
-        </dd>
-        <dt class="col-sm-2">
-            First Name
-        </dt>
-        <dd class="col-sm-10">
-            @Model.FirstName
-        </dd>
-        <dt class="col-sm-2">
-            Last Name
-        </dt>
-        <dd class="col-sm-10">
-            @Model.LastName
-        </dd>
-        <dt class="col-sm-2">
-            Birthday
-        </dt>
-        <dd class="col-sm-10">
-            @Model.Birthday.ToShortDateString()
-        </dd>
-        <dt class="col-sm-2">
-            Role
-        </dt>
-        <dd class="col-sm-10">
-            @Model.Role
-        </dd>
-    </dl>
-</div>
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow-custom">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-id-card me-2"></i>Account Information</h5>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary mb-3"><i class="fas fa-user me-2"></i>Basic Information</h6>
+                        <dl class="row">
+                            <dt class="col-sm-5">Username:</dt>
+                            <dd class="col-sm-7">
+                                <span class="fw-medium">@Model.Username</span>
+                            </dd>
+                            <dt class="col-sm-5">Email:</dt>
+                            <dd class="col-sm-7">
+                                <span class="fw-medium">@Model.Email</span>
+                            </dd>
+                            <dt class="col-sm-5">Role:</dt>
+                            <dd class="col-sm-7">
+                                @if (Model.Role == "Admin")
+                                {
+                                    <span class="badge bg-danger">@Model.Role</span>
+                                }
+                                else if (Model.Role == "Courier")
+                                {
+                                    <span class="badge bg-info">@Model.Role</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">@Model.Role</span>
+                                }
+                            </dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-primary mb-3"><i class="fas fa-address-card me-2"></i>Personal Details</h6>
+                        <dl class="row">
+                            <dt class="col-sm-5">First Name:</dt>
+                            <dd class="col-sm-7">
+                                <span class="fw-medium">@Model.FirstName</span>
+                            </dd>
+                            <dt class="col-sm-5">Last Name:</dt>
+                            <dd class="col-sm-7">
+                                <span class="fw-medium">@Model.LastName</span>
+                            </dd>
+                            <dt class="col-sm-5">Birthday:</dt>
+                            <dd class="col-sm-7">
+                                <span class="fw-medium">@Model.Birthday.ToShortDateString()</span>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
 
-@if (!string.IsNullOrEmpty(Model.Street)) // Check if address details are available
-{
-<div>
-    <h4>Address Information</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            Street
-        </dt>
-        <dd class="col-sm-10">
-            @Model.Street
-        </dd>
-        <dt class="col-sm-2">
-            City
-        </dt>
-        <dd class="col-sm-10">
-            @Model.City
-        </dd>
-        <dt class="col-sm-2">
-            Zip Code
-        </dt>
-        <dd class="col-sm-10">
-            @Model.ZipCode
-        </dd>
-        <dt class="col-sm-2">
-            Country
-        </dt>
-        <dd class="col-sm-10">
-            @Model.Country
-        </dd>
-    </dl>
+                @if (!string.IsNullOrEmpty(Model.Street))
+                {
+                    <hr />
+                    <h6 class="text-primary mb-3"><i class="fas fa-map-marker-alt me-2"></i>Address Information</h6>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <address class="border rounded p-3 bg-light">
+                                <strong>@Model.FirstName @Model.LastName</strong><br>
+                                @Model.Street<br>
+                                @Model.City, @Model.ZipCode<br>
+                                @Model.Country
+                            </address>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="card-footer bg-light">
+                <div class="d-flex justify-content-between">
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                    </a>
+                    <a asp-action="EditAccount" class="btn btn-primary">
+                        <i class="fas fa-edit me-1"></i>Edit Account
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-}
-else
-{
-<div>
-    <h4>Address Information</h4>
-    <hr />
-    <p>No address information available.</p>
 </div>
-}

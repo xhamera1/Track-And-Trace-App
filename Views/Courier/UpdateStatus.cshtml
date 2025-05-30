@@ -1,98 +1,170 @@
-@model _10.Models.CourierUpdatePackageStatusViewModel 
-@* Changed namespace for ViewModel *@
+@model _10.Models.CourierUpdatePackageStatusViewModel
 
 @{
-    ViewData["Title"] = (Model != null && !string.IsNullOrEmpty(Model.TrackingNumber)) 
-                        ? $"Update Package Status: {Model.TrackingNumber}" 
+    ViewData["Title"] = (Model != null && !string.IsNullOrEmpty(Model.TrackingNumber))
+                        ? $"Update Package Status: {Model.TrackingNumber}"
                         : "Update Package Status";
 }
 
-<h1>@ViewData["Title"]</h1>
-<hr />
+<div class="page-header">
+    <h1><i class="fas fa-edit me-3"></i>Update Package Status</h1>
+    <p>Update the delivery status and location of the package</p>
+</div>
 
-@if (Model == null) {
-    <p>Error: Cannot load the update form data.</p>
-    <a href="@Url.Action("ActivePackages", "Courier")">Back to List</a>
+@if (Model == null)
+{
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        Error: Cannot load the update form data.
+    </div>
+    <a href="@Url.Action("ActivePackages", "Courier")" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i>Back to List
+    </a>
 }
 else
 {
-    <div>
-        <form asp-action="UpdateStatus" asp-route-id="@Model.PackageId" method="post">
-            @Html.AntiForgeryToken()
-            
-            <div asp-validation-summary="All" style="color:red; border: 1px solid red; padding: 10px; margin-bottom:15px;"></div>
-
-            <input type="hidden" asp-for="PackageId" />
-            <input type="hidden" asp-for="TrackingNumber" />
-            <input type="hidden" asp-for="CurrentStatusName" />
-            <input type="hidden" asp-for="CurrentLongitude" />
-            <input type="hidden" asp-for="CurrentLatitude" />
-
-            <div>
-                <p><strong>Tracking Number:</strong> @(Model.TrackingNumber ?? "N/A")</p>
-                <p><strong>Current Status:</strong> @(Model.CurrentStatusName ?? "N/A")</p>
-                <p>
-                    <strong>Current Location:</strong>
-                    @if (Model.CurrentLatitude.HasValue && Model.CurrentLongitude.HasValue)
-                    {
-                        @($"Lat: {Model.CurrentLatitude.Value.ToString("F5")}, Lon: {Model.CurrentLongitude.Value.ToString("F5")}")
-                    }
-                    else
-                    {
-                        @Html.Raw("Unknown")
-                    }
-                </p>
-            </div>
-            <hr/>
-
-            @if (Model.AvailableStatuses != null && Model.AvailableStatuses.Any())
-            {
-                <div>
-                    <label asp-for="NewStatusId"></label>:<br />
-                    <select asp-for="NewStatusId" asp-items="Model.AvailableStatuses">
-                        @* The controller pre-selects the current status, so a blank option might not be needed unless you want to force a choice *@
-                    </select><br />
-                    <span asp-validation-for="NewStatusId" style="color:red;"></span>
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-custom">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-box me-2"></i>Package Information</h5>
                 </div>
-                <br />
-            }
-            else if (Model.CurrentStatusName == "Delivered") 
-            {
-                 <p>This package has already been delivered. Status cannot be changed.</p>
-                 <input type="hidden" asp-for="NewStatusId" /> 
-            }
-            else
-            {
-                <p>No available statuses to change to, or the current status does not allow further changes by courier.</p>
-                 <input type="hidden" asp-for="NewStatusId" /> 
-            }
+                <div class="card-body">
+                    <form asp-action="UpdateStatus" asp-route-id="@Model.PackageId" method="post" id="updateStatusForm">
+                        @Html.AntiForgeryToken()
 
-            <div>
-                <label asp-for="NewLatitude"></label> (e.g., 50.0614):<br />
-                <input asp-for="NewLatitude" /><br />
-                <span asp-validation-for="NewLatitude" style="color:red;"></span>
+                        <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+
+                        <input type="hidden" asp-for="PackageId" />
+                        <input type="hidden" asp-for="TrackingNumber" />
+                        <input type="hidden" asp-for="CurrentStatusName" />
+                        <input type="hidden" asp-for="CurrentLongitude" />
+                        <input type="hidden" asp-for="CurrentLatitude" />
+
+                        <!-- Package Overview -->
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <h6 class="text-primary mb-3"><i class="fas fa-info-circle me-2"></i>Current Package Information</h6>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="info-card">
+                                            <label class="fw-medium text-muted">Tracking Number</label>
+                                            <div class="h6 text-primary">@(Model.TrackingNumber ?? "N/A")</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="info-card">
+                                            <label class="fw-medium text-muted">Current Status</label>
+                                            <div><span class="status-badge badge-info">@(Model.CurrentStatusName ?? "N/A")</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="info-card">
+                                            <label class="fw-medium text-muted">Current Location</label>
+                                            <div class="small text-muted">
+                                                @if (Model.CurrentLatitude.HasValue && Model.CurrentLongitude.HasValue)
+                                                {
+                                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                                    @($"Lat: {Model.CurrentLatitude.Value:F5}, Lon: {Model.CurrentLongitude.Value:F5}")
+                                                }
+                                                else
+                                                {
+                                                    <i class="fas fa-question-circle me-1"></i>@("Unknown")
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr />
+
+                        <!-- Status Update Section -->
+                        <h6 class="text-primary mb-3"><i class="fas fa-sync-alt me-2"></i>Update Status</h6>
+
+                        @if (Model.AvailableStatuses != null && Model.AvailableStatuses.Any())
+                        {
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="NewStatusId" class="form-label">
+                                            <i class="fas fa-clipboard-list me-1"></i>New Status
+                                        </label>
+                                        <select asp-for="NewStatusId" asp-items="Model.AvailableStatuses" class="form-select form-select-lg">
+                                        </select>
+                                        <span asp-validation-for="NewStatusId" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Notes" class="form-label">
+                                            <i class="fas fa-sticky-note me-1"></i>Notes (Optional)
+                                        </label>
+                                        <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Add any additional notes">@Model.Notes</textarea>
+                                        <span asp-validation-for="Notes" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        else if (Model.CurrentStatusName == "Delivered")
+                        {
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle me-2"></i>
+                                This package has already been delivered. Status cannot be changed.
+                            </div>
+                            <input type="hidden" asp-for="NewStatusId" />
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                No available statuses to change to, or the current status does not allow further changes by courier.
+                            </div>
+                            <input type="hidden" asp-for="NewStatusId" />
+                        }
+
+                        <!-- Location Update Section -->
+                        <h6 class="text-primary mb-3"><i class="fas fa-map-marker-alt me-2"></i>Update Location</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label asp-for="NewLatitude" class="form-label">
+                                        <i class="fas fa-crosshairs me-1"></i>Latitude
+                                    </label>
+                                    <input asp-for="NewLatitude" class="form-control form-control-lg" placeholder="e.g., 50.0614" />
+                                    <div class="form-text">Enter the latitude coordinate</div>
+                                    <span asp-validation-for="NewLatitude" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label asp-for="NewLongitude" class="form-label">
+                                        <i class="fas fa-crosshairs me-1"></i>Longitude
+                                    </label>
+                                    <input asp-for="NewLongitude" class="form-control form-control-lg" placeholder="e.g., 19.9366" />
+                                    <div class="form-text">Enter the longitude coordinate</div>
+                                    <span asp-validation-for="NewLongitude" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="d-flex justify-content-between">
+                        <a href="@Url.Action("PackageDetails", "Courier", new { id = Model.PackageId })" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </a>
+                        @if (Model.CurrentStatusName != "Delivered")
+                        {
+                            <button type="submit" form="updateStatusForm" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save me-1"></i>Save Changes
+                            </button>
+                        }
+                    </div>
+                </div>
             </div>
-            <br />
-            <div>
-                <label asp-for="NewLongitude"></label> (e.g., 19.9366):<br />
-                <input asp-for="NewLongitude" /><br />
-                <span asp-validation-for="NewLongitude" style="color:red;"></span>
-            </div>
-            <br />
-            <div>
-                <label asp-for="Notes"></label>:<br />
-                <textarea asp-for="Notes" rows="3" cols="50">@Model.Notes</textarea><br />
-                <span asp-validation-for="Notes" style="color:red;"></span>
-            </div>
-            <br />
-            <div>
-                @if (Model.CurrentStatusName != "Delivered") // Only show save button if not delivered
-                {
-                     <button type="submit">Save Changes</button>
-                }
-                <a href="@Url.Action("PackageDetails", "Courier", new { id = Model.PackageId })">Cancel</a>
-            </div>
-        </form>
+        </div>
     </div>
 }
 

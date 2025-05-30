@@ -1,61 +1,115 @@
-@* Definiuje model, którego oczekuje ten widok - lista obiektów User *@
-@model IEnumerable<_10.Models.User> 
+@model IEnumerable<_10.Models.User>
 
 @{
-    ViewData["Title"] = "Lista Użytkowników";
+    ViewData["Title"] = "User Management";
 }
 
-<h1>@ViewData["Title"]</h1>
+<div class="page-header">
+    <h1><i class="fas fa-users me-3"></i>User Management</h1>
+    <p>Manage system users and their roles</p>
+</div>
 
-<p>To jest testowa strona wyświetlająca użytkowników z bazy danych.</p>
-
-@if (Model != null && Model.Any())
-{
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>
-                    @Html.DisplayNameFor(model => model.First().UserId)
-                </th>
-                <th>
-                    @Html.DisplayNameFor(model => model.First().Username)
-                </th>
-                <th>
-                    @Html.DisplayNameFor(model => model.First().Email)
-                </th>
-                <th>
-                    @Html.DisplayNameFor(model => model.First().Role)
-                </th>
-                <th>
-                    @Html.DisplayNameFor(model => model.First().CreatedAt)
-                </th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var user in Model)
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow-custom">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-list me-2"></i>System Users</h5>
+                    <span class="badge badge-info fs-6">@(Model?.Count() ?? 0) users</span>
+                </div>
+            </div>
+            <div class="card-body">
+                @if (Model != null && Model.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover modern-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-hashtag me-1"></i>User ID</th>
+                                    <th><i class="fas fa-user me-1"></i>Username</th>
+                                    <th><i class="fas fa-envelope me-1"></i>Email</th>
+                                    <th><i class="fas fa-user-tag me-1"></i>Role</th>
+                                    <th><i class="fas fa-calendar me-1"></i>Created</th>
+                                    <th><i class="fas fa-cogs me-1"></i>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var user in Model)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="text-muted">#@user.UserId</span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-user-circle me-2 text-muted"></i>
+                                                <span class="fw-medium">@user.Username</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="text-muted">@user.Email</span>
+                                        </td>
+                                        <td>
+                                            @if (user.Role == UserRole.Admin)
+                                            {
+                                                <span class="status-badge badge-danger">@user.Role</span>
+                                            }
+                                            else if (user.Role == UserRole.Courier)
+                                            {
+                                                <span class="status-badge badge-info">@user.Role</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="status-badge badge-success">@user.Role</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">@user.CreatedAt.ToString("yyyy-MM-dd")</small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-primary btn-sm" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-warning btn-sm" title="Edit User">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" title="Delete User">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">No users found</h6>
+                        <p class="text-muted">There are currently no users in the system.</p>
+                    </div>
+                }
+            </div>
+            @if (Model != null && Model.Any())
             {
-                <tr>
-                    <td>
-                        @Html.DisplayFor(modelItem => user.UserId)
-                    </td>
-                    <td>
-                        @Html.DisplayFor(modelItem => user.Username)
-                    </td>
-                    <td>
-                        @Html.DisplayFor(modelItem => user.Email)
-                    </td>
-                    <td>
-                        @Html.DisplayFor(modelItem => user.Role)
-                    </td>
-                    <td>
-                        @Html.DisplayFor(modelItem => user.CreatedAt)
-                    </td>
-                </tr>
+                <div class="card-footer bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">Showing @Model.Count() users</small>
+                        <div>
+                            <button class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-download me-1"></i>Export
+                            </button>
+                            <button class="btn btn-primary btn-sm">
+                                <i class="fas fa-user-plus me-1"></i>Add User
+                            </button>
+                        </div>
+                    </div>
+                </div>
             }
-        </tbody>
-    </table>
-}
-else
-{
-    <p>Nie znaleziono żadnych użytkowników w bazie danych lub model jest pusty.</p>
-}
+        </div>
+    </div>
+</div>
