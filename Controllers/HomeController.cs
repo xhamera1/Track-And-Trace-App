@@ -52,66 +52,6 @@ public class HomeController : Controller
         return View();
     }
 
-    public async Task<IActionResult> PackageDetails(int id)
-    {
-        var userIdString = HttpContext.Session.GetString("UserId");
-        var userRoleString = HttpContext.Session.GetString("UserRole");
-
-        if (string.IsNullOrEmpty(userIdString) || string.IsNullOrEmpty(userRoleString))
-        {
-            return RedirectToAction("Login", "Auth"); // Or appropriate unauthorized access page
-        }
-
-        var userId = int.Parse(userIdString);
-
-        var package = await _context.Packages
-            .Include(p => p.SenderUser)
-            .Include(p => p.RecipientUser)
-            .Include(p => p.CurrentStatus)
-            .Include(p => p.History)
-                .ThenInclude(ph => ph.Status) // Changed StatusDefinition to Status
-            .FirstOrDefaultAsync(p => p.PackageId == id); // Changed Id to PackageId
-
-        if (package == null)
-        {
-            return NotFound();
-        }
-
-        bool isAuthorized = false;
-        var userRole = Enum.Parse<UserRole>(userRoleString); // Assuming UserRole is an enum
-
-        switch (userRole)
-        {
-            case UserRole.User:
-                if (package.SenderUserId == userId || package.RecipientUserId == userId)
-                {
-                    isAuthorized = true;
-                }
-                break;
-            case UserRole.Courier:
-                // Assuming Courier assignment is checked elsewhere or not required for viewing by courier
-                if (package.SenderUserId == userId ||
-                    package.RecipientUserId == userId ||
-                    package.History.Any(ph => ph.Package.AssignedCourierId == userId)) // Check if courier is assigned to the package
-                {
-                    isAuthorized = true;
-                }
-                break;
-            case UserRole.Admin: // Admins can view any package
-                isAuthorized = true;
-                break;
-        }
-
-        if (!isAuthorized)
-        {
-            // You can redirect to an "Access Denied" page or back to Index with a message
-            TempData["ErrorMessage"] = "You are not authorized to view these package details.";
-            return RedirectToAction("Index");
-        }
-
-        return View(package);
-    }
-
     public IActionResult Privacy()
     {
         return View();
