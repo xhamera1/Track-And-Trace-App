@@ -43,10 +43,10 @@ else
             <dd>@(Model.DeliveryDate?.ToString("yyyy-MM-dd HH:mm") ?? "Not yet delivered")</dd>
 
             <dt>Sender</dt>
-            <dd>@(Model.SenderUser?.UserName ?? "N/A") (@(Model.SenderUser?.Email ?? "N/A"))</dd>
+            <dd>@(Model.SenderUser?.Username ?? "N/A") (@(Model.SenderUser?.Email ?? "N/A"))</dd>
 
             <dt>Recipient</dt>
-            <dd>@(Model.RecipientUser?.UserName ?? "N/A") (@(Model.RecipientUser?.Email ?? "N/A"))</dd>
+            <dd>@(Model.RecipientUser?.Username ?? "N/A") (@(Model.RecipientUser?.Email ?? "N/A"))</dd>
 
             <dt>Origin Address</dt>
             <dd>

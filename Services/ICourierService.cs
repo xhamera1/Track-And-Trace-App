@@ -14,6 +14,6 @@ namespace _10.Services
 
         Task<Package?> GetPackageDetailsForCourierAsync(int packageId, int courierId);
 
-        Task<(bool Success, string? ErrorMessage)> UpdatePackageStatusAndLocationAsync(int packageId, int courierId, int newStatusId, double? longitude, double? latitude, string? notes);
+        Task<(bool Success, string? ErrorMessage)> UpdatePackageStatusAndLocationAsync(int packageId, int courierId, int newStatusId, decimal? longitude, decimal? latitude, string? notes);
     }
 }
