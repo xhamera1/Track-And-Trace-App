@@ -7,6 +7,13 @@ namespace _10.Attributes
     {
         public string[]? RequiredRoles { get; set; }
 
+        public SessionAuthorizeAttribute() { } // Default constructor
+
+        public SessionAuthorizeAttribute(params string[] roles)
+        {
+            RequiredRoles = roles;
+        }
+
         public override void OnActionExecuting(ActionExecutingContext context)
         {
             var userId = context.HttpContext.Session.GetString("UserId");

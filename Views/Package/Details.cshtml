@@ -1,0 +1,211 @@
+@model _10.Models.Package
+
+@{
+    ViewData["Title"] = "Package Details";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-box"></i> Package Details
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="text-primary">General Information</h5>
+                            <dl class="row">
+                                <dt class="col-sm-4">Tracking Number:</dt>
+                                <dd class="col-sm-8"><strong>@Html.DisplayFor(model => model.TrackingNumber)</strong></dd>
+
+                                <dt class="col-sm-4">Current Status:</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge bg-info">@Html.DisplayFor(model => model.CurrentStatus.Name)</span>
+                                </dd>
+
+                                <dt class="col-sm-4">Package Size:</dt>
+                                <dd class="col-sm-8">@Html.DisplayFor(model => model.PackageSize)</dd>
+
+                                @if (Model.WeightInKg.HasValue)
+                                {
+                                    <dt class="col-sm-4">Weight:</dt>
+                                    <dd class="col-sm-8">@Html.DisplayFor(model => model.WeightInKg) kg</dd>
+                                }
+
+                                <dt class="col-sm-4">Submission Date:</dt>
+                                <dd class="col-sm-8">@Model.SubmissionDate.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                                @if (Model.DeliveryDate.HasValue)
+                                {
+                                    <dt class="col-sm-4">Delivery Date:</dt>
+                                    <dd class="col-sm-8">@Model.DeliveryDate.Value.ToString("yyyy-MM-dd HH:mm")</dd>
+                                }
+                            </dl>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h5 class="text-primary">People Involved</h5>
+                            <dl class="row">
+                                <dt class="col-sm-4">Sender:</dt>
+                                <dd class="col-sm-8">
+                                    @Html.DisplayFor(model => model.SenderUser.FirstName) @Html.DisplayFor(model => model.SenderUser.LastName)<br>
+                                    <small class="text-muted">@Html.DisplayFor(model => model.SenderUser.Email)</small>
+                                </dd>
+
+                                <dt class="col-sm-4">Recipient:</dt>
+                                <dd class="col-sm-8">
+                                    @Html.DisplayFor(model => model.RecipientUser.FirstName) @Html.DisplayFor(model => model.RecipientUser.LastName)<br>
+                                    <small class="text-muted">@Html.DisplayFor(model => model.RecipientUser.Email)</small>
+                                </dd>
+
+                                @if (Model.AssignedCourier != null)
+                                {
+                                    <dt class="col-sm-4">Assigned Courier:</dt>
+                                    <dd class="col-sm-8">
+                                        @Html.DisplayFor(model => model.AssignedCourier.FirstName) @Html.DisplayFor(model => model.AssignedCourier.LastName)<br>
+                                        <small class="text-muted">@Html.DisplayFor(model => model.AssignedCourier.Email)</small>
+                                    </dd>
+                                }
+                            </dl>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.Notes))
+                    {
+                        <div class="mt-4">
+                            <h5 class="text-primary">Notes</h5>
+                            <div class="alert alert-light">
+                                @Html.DisplayFor(model => model.Notes)
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Address Information -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-map-marker-alt"></i> Origin Address</h5>
+                </div>
+                <div class="card-body">
+                    <address>
+                        @Html.DisplayFor(model => model.OriginAddress.Street)<br>
+                        @Html.DisplayFor(model => model.OriginAddress.City), @Html.DisplayFor(model => model.OriginAddress.ZipCode)<br>
+                        @Html.DisplayFor(model => model.OriginAddress.Country)
+                    </address>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-map-marker-alt"></i> Destination Address</h5>
+                </div>
+                <div class="card-body">
+                    <address>
+                        @Html.DisplayFor(model => model.DestinationAddress.Street)<br>
+                        @Html.DisplayFor(model => model.DestinationAddress.City), @Html.DisplayFor(model => model.DestinationAddress.ZipCode)<br>
+                        @Html.DisplayFor(model => model.DestinationAddress.Country)
+                    </address>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Package History -->
+    @if (Model.History != null && Model.History.Any())
+    {
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0"><i class="fas fa-history"></i> Package History</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="timeline">
+                            @foreach (var historyEntry in Model.History.OrderByDescending(h => h.Timestamp))
+                            {
+                                <div class="timeline-item mb-3">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <small class="text-muted">@historyEntry.Timestamp.ToString("yyyy-MM-dd HH:mm")</small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <span class="badge bg-info">@historyEntry.Status.Name</span>
+                                        </div>
+                                        <div class="col-md-3">
+                                            @if (historyEntry.Latitude.HasValue && historyEntry.Longitude.HasValue)
+                                            {
+                                                <small class="text-muted">
+                                                    <i class="fas fa-map-pin"></i>
+                                                    @historyEntry.Latitude.Value.ToString("F6"), @historyEntry.Longitude.Value.ToString("F6")
+                                                </small>
+                                            }
+                                            else
+                                            {
+                                                <small class="text-muted">Location: N/A</small>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No history available for this package.
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Action Buttons -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="d-flex gap-2">
+                <a asp-action="Index" asp-controller="Home" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+                @if (ViewContext.HttpContext.Session.GetString("UserRole") == "User")
+                {
+                    <a asp-action="SendPackage" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Send New Package
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .timeline-item {
+        padding: 10px;
+        border-left: 3px solid #007bff;
+        margin-left: 20px;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+
+    .card-header i {
+        margin-right: 8px;
+    }
+
+    .badge {
+        font-size: 0.9em;
+    }
+</style>

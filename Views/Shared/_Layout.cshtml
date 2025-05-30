@@ -31,6 +31,12 @@
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-area="" asp-controller="Users" asp-action="Account">Account</a>
                             </li>
+                            @if (Context.Session.GetString("UserRole") == "User")
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="" asp-controller="Package" asp-action="SendPackage">Send Package</a>
+                                </li>
+                            }
                         }
                     </ul>
                     <ul class="navbar-nav">

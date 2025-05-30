@@ -13,8 +13,8 @@ namespace _10.Models
         public int PackageId { get; set; }
 
         [Required]
-        [StringLength(255)] 
-        public string TrackingNumber { get; set; } 
+        [StringLength(255)]
+        public string TrackingNumber { get; set; }
 
         [Required]
         public int SenderUserId { get; set; }
@@ -34,23 +34,23 @@ namespace _10.Models
         public PackageSize PackageSize { get; set; }
 
         [Column(TypeName = "decimal(8, 2)")]
-        public decimal? WeightInKg { get; set; } 
+        public decimal? WeightInKg { get; set; }
 
-        [Column(TypeName = "TEXT")] 
-        public string? Notes { get; set; } 
+        [Column(TypeName = "TEXT")]
+        public string? Notes { get; set; }
 
         [Required]
-        public int OriginAddressId { get; set; } 
+        public int OriginAddressId { get; set; }
         [ForeignKey("OriginAddressId")]
         public virtual Address OriginAddress { get; set; }
 
         [Required]
-        public int DestinationAddressId { get; set; } 
+        public int DestinationAddressId { get; set; }
         [ForeignKey("DestinationAddressId")]
         public virtual Address DestinationAddress { get; set; }
 
         [Required]
-        public DateTime SubmissionDate { get; set; } = DateTime.UtcNow; 
+        public DateTime SubmissionDate { get; set; } = DateTime.UtcNow;
 
         public DateTime? DeliveryDate { get; set; }
 
@@ -59,11 +59,11 @@ namespace _10.Models
         [ForeignKey("StatusId")]
         public virtual StatusDefinition CurrentStatus { get; set; }
 
-        [Column(TypeName = "decimal(10, 7)")] 
+        [Column(TypeName = "decimal(10, 7)")]
         public decimal? Longitude { get; set; }
 
-        [Column(TypeName = "decimal(10, 7)")] 
-        public decimal? Latitude { get; set; } 
+        [Column(TypeName = "decimal(10, 7)")]
+        public decimal? Latitude { get; set; }
 
         public virtual ICollection<PackageHistory> History { get; set; } = new List<PackageHistory>();
     }

@@ -12,8 +12,8 @@ namespace _10.Models
         public int StatusId { get; set; }
 
         [Required]
-        [StringLength(32)] 
-        public string Name { get; set; } 
+        [StringLength(32)]
+        public string Name { get; set; }
 
         [Required]
         [StringLength(255)]
