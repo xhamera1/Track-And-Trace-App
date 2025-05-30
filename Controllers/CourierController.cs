@@ -22,7 +22,7 @@ namespace _10.Controllers
         private readonly IPackageAuthorizationService _authorizationService;
 
         public CourierController(
-            ApplicationDbContext context, 
+            ApplicationDbContext context,
             ILogger<CourierController> logger,
             IPackageAuthorizationService authorizationService)
         {
@@ -75,14 +75,14 @@ namespace _10.Controllers
                     .OrderByDescending(p => p.SubmissionDate)
                     .AsNoTracking()
                     .ToListAsync();
-                
+
                 ViewData["Title"] = "Active Packages for Delivery";
                 return View("PackageList", activePackages);
             }
             catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "Error in ActivePackages while fetching courier ID or data.");
-                TempData["ErrorMessage"] = ex.Message; 
+                TempData["ErrorMessage"] = ex.Message;
                 return RedirectToAction("Index", "Home");
             }
             catch (Exception ex)
@@ -108,7 +108,7 @@ namespace _10.Controllers
                     .OrderByDescending(p => p.DeliveryDate)
                     .AsNoTracking()
                     .ToListAsync();
-                
+
                 ViewData["Title"] = "Delivered Packages";
                 return View("PackageList", deliveredPackages);
             }
@@ -118,7 +118,7 @@ namespace _10.Controllers
                 TempData["ErrorMessage"] = ex.Message;
                 return RedirectToAction("Index", "Home");
             }
-             catch (Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error in DeliveredPackages.");
                 TempData["ErrorMessage"] = "An unexpected error occurred while fetching delivered packages.";
@@ -141,7 +141,7 @@ namespace _10.Controllers
                     .OrderByDescending(p => p.SubmissionDate)
                     .AsNoTracking()
                     .ToListAsync();
-                
+
                 ViewData["Title"] = "All My Assigned Packages";
                 return View("PackageList", allAssignedPackages);
             }
@@ -173,7 +173,7 @@ namespace _10.Controllers
             {
                 var courierId = GetCurrentUserId();
                 var userRole = GetCurrentUserRole();
-                
+
                 var package = await _context.Packages
                     .Include(p => p.SenderUser)
                     .Include(p => p.RecipientUser)
@@ -196,7 +196,7 @@ namespace _10.Controllers
                 {
                     _logger.LogWarning("Courier {CourierId} with role {UserRole} denied access to package {PackageId}: {Reason}",
                         courierId, userRole, package.PackageId, authResult.Reason);
-                    
+
                     TempData["ErrorMessage"] = $"Access denied: {authResult.Reason}";
                     return RedirectToAction(nameof(ActivePackages));
                 }
@@ -233,7 +233,7 @@ namespace _10.Controllers
             {
                 var courierId = GetCurrentUserId();
                 var userRole = GetCurrentUserRole();
-                
+
                 var package = await _context.Packages
                     .Include(p => p.CurrentStatus)
                     .Include(p => p.AssignedCourier) // Include for authorization
@@ -252,7 +252,7 @@ namespace _10.Controllers
                     TempData["ErrorMessage"] = "You are not authorized to update this package status.";
                     return RedirectToAction(nameof(ActivePackages));
                 }
-                
+
                 if (package.CurrentStatus?.Name == "Delivered")
                 {
                     TempData["InfoMessage"] = "This package has already been delivered and its status cannot be changed further through this form.";
@@ -270,12 +270,12 @@ namespace _10.Controllers
                     allowedNewStatusNames.Add("In Delivery");
                     allowedNewStatusNames.Add("Delivered");
                 }
-                
+
                 var viewModel = new CourierUpdatePackageStatusViewModel
                 {
                     PackageId = package.PackageId,
                     TrackingNumber = package.TrackingNumber,
-                    CurrentStatusName = package.CurrentStatus?.Description, 
+                    CurrentStatusName = package.CurrentStatus?.Description,
                     NewStatusId = package.StatusId,
                     CurrentLongitude = package.Longitude,
                     CurrentLatitude = package.Latitude,
@@ -288,7 +288,7 @@ namespace _10.Controllers
                                                .Select(s => new SelectListItem { Value = s.StatusId.ToString(), Text = s.Description })
                                                .ToListAsync()
                 };
-                
+
                 return View(viewModel);
             }
             catch (InvalidOperationException ex)
@@ -315,7 +315,7 @@ namespace _10.Controllers
                 return BadRequest("Package ID mismatch.");
             }
 
-            var courierId = GetCurrentUserId(); 
+            var courierId = GetCurrentUserId();
             Package? packageToUpdate = null;
 
             async Task PopulateViewModelForError(CourierUpdatePackageStatusViewModel vm)
@@ -333,7 +333,7 @@ namespace _10.Controllers
                 }
 
                 List<string> allowedNewStatusNamesOnError = new List<string>();
-                 if (currentPackageData?.CurrentStatus?.Name == "Sent")
+                if (currentPackageData?.CurrentStatus?.Name == "Sent")
                 {
                     allowedNewStatusNamesOnError.Add("In Delivery");
                     allowedNewStatusNamesOnError.Add("Delivered");
@@ -358,7 +358,7 @@ namespace _10.Controllers
                 try
                 {
                     var userRole = GetCurrentUserRole();
-                    
+
                     packageToUpdate = await _context.Packages
                         .Include(p => p.CurrentStatus)
                         .Include(p => p.AssignedCourier) // Include for authorization
@@ -389,8 +389,9 @@ namespace _10.Controllers
                         await PopulateViewModelForError(viewModel);
                         return View(viewModel);
                     }
-                    
-                    if (packageToUpdate.CurrentStatus?.Name == "Delivered" && newStatus.Name != "Delivered") {
+
+                    if (packageToUpdate.CurrentStatus?.Name == "Delivered" && newStatus.Name != "Delivered")
+                    {
                         await transaction.RollbackAsync();
                         ModelState.AddModelError("NewStatusId", "Cannot change the status of a package that has already been delivered.");
                         await PopulateViewModelForError(viewModel);
@@ -411,11 +412,11 @@ namespace _10.Controllers
                     {
                         packageToUpdate.DeliveryDate = DateTime.UtcNow;
                     }
-                    
-                    if (statusChanged || locationChanged || notesChanged || 
+
+                    if (statusChanged || locationChanged || notesChanged ||
                         (newStatus.Name == "In Delivery" && packageToUpdate.CurrentStatus?.Name == "In Delivery"))
                     {
-                         var packageHistoryEntry = new PackageHistory
+                        var packageHistoryEntry = new PackageHistory
                         {
                             PackageId = packageToUpdate.PackageId,
                             StatusId = viewModel.NewStatusId,
