@@ -1,15 +1,14 @@
-// File: Controllers/AuthController.cs
 using _10.Data;
-using _10.Models; // Zawiera User, RegisterViewModel, LoginViewModel
+using _10.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using System.Collections.Generic; // Dla List<Claim>
-using System.Security.Claims;    // Dla ClaimsPrincipal, Claim, ClaimTypes
-using Microsoft.AspNetCore.Authentication; // Dla HttpContext.SignInAsync/SignOutAsync
-using Microsoft.AspNetCore.Authentication.Cookies; // Dla CookieAuthenticationDefaults
-using Microsoft.Extensions.Logging; // Dla ILogger
+using System.Collections.Generic;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.Extensions.Logging;
 
 namespace _10.Controllers
 {
@@ -92,7 +91,7 @@ namespace _10.Controllers
         [HttpGet]
         public IActionResult Register()
         {
-             if (User.Identity != null && User.Identity.IsAuthenticated)
+            if (User.Identity != null && User.Identity.IsAuthenticated)
             {
                 return RedirectToAction("Index", "Home");
             }
@@ -171,7 +170,7 @@ namespace _10.Controllers
 
             // Wylogowanie użytkownika z systemu opartego na ciasteczkach
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            
+
             HttpContext.Session.Clear(); // Wyczyść również dane sesji
             _logger.LogInformation("User {Username} logged out at {Time}.", userName, DateTime.UtcNow);
 
