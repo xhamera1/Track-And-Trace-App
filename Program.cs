@@ -1,16 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using _10.Data;
+using _10.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 
+
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// do debugu bo mi nie dizalalo pobieranie z user secrets
-Console.WriteLine("----------------------------------------------------");
-Console.WriteLine($"DEBUG (Program.cs): connection string: '{connectionString}'");
-Console.WriteLine("----------------------------------------------------");
 
 if (string.IsNullOrEmpty(connectionString))
 {
@@ -20,6 +19,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
 );
 
+builder.Services.AddScoped<ICourierService, CourierService>();
+
 // Add session services
 builder.Services.AddDistributedMemoryCache(); // Required for session state
 builder.Services.AddSession(options =>
@@ -28,6 +29,17 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
+
+
+builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Auth/Login";
+        options.LogoutPath = "/Auth/Logout";
+        options.AccessDeniedPath = "/Home/Index"; 
+        // options.ExpireTimeSpan = TimeSpan.FromHours(1);
+    });
+//
 
 var app = builder.Build();
 
@@ -44,6 +56,7 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseSession(); // Add session middleware
+app.UseAuthentication();
 
 app.UseAuthorization();
 
