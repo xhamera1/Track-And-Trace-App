@@ -66,40 +66,19 @@ namespace _10.Controllers
                         await _context.SaveChangesAsync(); // Save to get UserId
                     }
 
-                    // Find or create origin address
-                    var originAddress = await _context.Addresses.FirstOrDefaultAsync(a =>
-                        a.Street == model.OriginStreet && a.City == model.OriginCity &&
-                        a.ZipCode == model.OriginZipCode && a.Country == model.OriginCountry);
-                    if (originAddress == null)
-                    {
-                        originAddress = new Address
-                        {
-                            Street = model.OriginStreet,
-                            City = model.OriginCity,
-                            ZipCode = model.OriginZipCode,
-                            Country = model.OriginCountry
-                        };
-                        _context.Addresses.Add(originAddress);
-                    }
+                    // Find or create origin address using a more robust approach
+                    var originAddress = await FindOrCreateAddressAsync(
+                        model.OriginStreet,
+                        model.OriginCity,
+                        model.OriginZipCode,
+                        model.OriginCountry);
 
-                    // Find or create destination address
-                    var destinationAddress = await _context.Addresses.FirstOrDefaultAsync(a =>
-                        a.Street == model.DestinationStreet && a.City == model.DestinationCity &&
-                        a.ZipCode == model.DestinationZipCode && a.Country == model.DestinationCountry);
-                    if (destinationAddress == null)
-                    {
-                        destinationAddress = new Address
-                        {
-                            Street = model.DestinationStreet,
-                            City = model.DestinationCity,
-                            ZipCode = model.DestinationZipCode,
-                            Country = model.DestinationCountry
-                        };
-                        _context.Addresses.Add(destinationAddress);
-                    }
-
-                    // Save addresses to get their IDs
-                    await _context.SaveChangesAsync();
+                    // Find or create destination address using a more robust approach
+                    var destinationAddress = await FindOrCreateAddressAsync(
+                        model.DestinationStreet,
+                        model.DestinationCity,
+                        model.DestinationZipCode,
+                        model.DestinationCountry);
 
                     // Get initial status
                     var initialStatus = await _context.StatusDefinitions.FirstOrDefaultAsync(s => s.Name == "Sent");
@@ -387,6 +366,81 @@ namespace _10.Controllers
                 _logger.LogError(ex, "Error picking up package {PackageId} by user {UserId}", id, userId);
                 TempData["ErrorMessage"] = "An unexpected error occurred while picking up the package. Please try again.";
                 return RedirectToAction(nameof(PickUp));
+            }
+        }
+
+        /// <summary>
+        /// Finds an existing address or creates a new one if it doesn't exist.
+        /// Uses INSERT IGNORE to handle potential duplicate key violations gracefully.
+        /// </summary>
+        private async Task<Address> FindOrCreateAddressAsync(string street, string city, string zipCode, string country)
+        {
+            // Normalize the input to handle potential whitespace issues and ensure non-null values
+            street = street?.Trim() ?? string.Empty;
+            city = city?.Trim() ?? string.Empty;
+            zipCode = zipCode?.Trim() ?? string.Empty;
+            country = country?.Trim() ?? string.Empty;
+
+            // Validate required fields
+            if (string.IsNullOrEmpty(street) || string.IsNullOrEmpty(city) ||
+                string.IsNullOrEmpty(zipCode) || string.IsNullOrEmpty(country))
+            {
+                throw new ArgumentException("All address fields (street, city, zip code, country) are required and cannot be empty.");
+            }
+
+            // First, try to find an existing address
+            var existingAddress = await _context.Addresses
+                .FirstOrDefaultAsync(a =>
+                    a.Street == street &&
+                    a.City == city &&
+                    a.ZipCode == zipCode &&
+                    a.Country == country);
+
+            if (existingAddress != null)
+            {
+                return existingAddress;
+            }
+
+            // If not found, try to create a new address with proper error handling
+            var newAddress = new Address
+            {
+                Street = street,
+                City = city,
+                ZipCode = zipCode,
+                Country = country
+            };
+
+            try
+            {
+                _context.Addresses.Add(newAddress);
+                await _context.SaveChangesAsync();
+                return newAddress;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message?.Contains("Duplicate entry") == true ||
+                                             ex.InnerException?.Message?.Contains("uq_address") == true)
+            {
+                // If we get a duplicate key violation, it means another thread/request created the same address
+                // Remove the address from tracking and try to find the existing one again
+                _context.Entry(newAddress).State = EntityState.Detached;
+
+                var concurrentlyCreatedAddress = await _context.Addresses
+                    .FirstOrDefaultAsync(a =>
+                        a.Street == street &&
+                        a.City == city &&
+                        a.ZipCode == zipCode &&
+                        a.Country == country);
+
+                if (concurrentlyCreatedAddress != null)
+                {
+                    return concurrentlyCreatedAddress;
+                }
+
+                // Log the error for debugging
+                _logger.LogError(ex, "Failed to handle duplicate address creation for: {Street}, {City}, {ZipCode}, {Country}",
+                    street, city, zipCode, country);
+
+                // If we still can't find it, re-throw the original exception
+                throw;
             }
         }
     }
