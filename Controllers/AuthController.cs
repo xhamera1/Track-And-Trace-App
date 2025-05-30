@@ -26,8 +26,9 @@ namespace _10.Controllers
         [HttpGet]
         public IActionResult Login()
         {
-            // Jeśli użytkownik jest już zalogowany, można go przekierować na stronę główną
-            if (User.Identity != null && User.Identity.IsAuthenticated)
+            // Check if user is already logged in via session
+            var userId = HttpContext.Session.GetString("UserId");
+            if (!string.IsNullOrEmpty(userId))
             {
                 return RedirectToAction("Index", "Home");
             }
