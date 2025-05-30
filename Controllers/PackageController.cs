@@ -102,7 +102,7 @@ namespace _10.Controllers
                     await _context.SaveChangesAsync();
 
                     // Get initial status
-                    var initialStatus = await _context.StatusDefinitions.FirstOrDefaultAsync(s => s.Name == "New Order");
+                    var initialStatus = await _context.StatusDefinitions.FirstOrDefaultAsync(s => s.Name == "Sent");
                     if (initialStatus == null)
                     {
                         _logger.LogError("Initial status 'New Order' not found in database.");
@@ -263,6 +263,131 @@ namespace _10.Controllers
             }
 
             return View(package);
+        }
+
+        // GET: Package/PickUp
+        [HttpGet]
+        [SessionAuthorize("User", "Admin")]
+        public async Task<IActionResult> PickUp()
+        {
+            var userIdString = HttpContext.Session.GetString("UserId");
+            if (string.IsNullOrEmpty(userIdString))
+            {
+                TempData["ErrorMessage"] = "Session expired or user not logged in.";
+                return RedirectToAction("Login", "Auth");
+            }
+
+            var userId = int.Parse(userIdString);
+
+            try
+            {
+                // Get packages where the current user is the recipient
+                var packages = await _context.Packages
+                    .Include(p => p.SenderUser)
+                    .Include(p => p.CurrentStatus)
+                    .Include(p => p.OriginAddress)
+                    .Include(p => p.DestinationAddress)
+                    .Where(p => p.RecipientUserId == userId)
+                    .OrderByDescending(p => p.SubmissionDate)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                return View(packages);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving pickup packages for user {UserId}", userId);
+                TempData["ErrorMessage"] = "An error occurred while loading your packages. Please try again.";
+                return View(new List<Package>());
+            }
+        }
+
+        // POST: Package/PickUpPackage/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [SessionAuthorize("User", "Admin")]
+        public async Task<IActionResult> PickUpPackage(int id)
+        {
+            var userIdString = HttpContext.Session.GetString("UserId");
+            if (string.IsNullOrEmpty(userIdString))
+            {
+                TempData["ErrorMessage"] = "Session expired or user not logged in.";
+                return RedirectToAction("Login", "Auth");
+            }
+
+            var userId = int.Parse(userIdString);
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Get the package and verify it belongs to the current user and has "In Delivery" status
+                var package = await _context.Packages
+                    .Include(p => p.CurrentStatus)
+                    .FirstOrDefaultAsync(p => p.PackageId == id && p.RecipientUserId == userId);
+
+                if (package == null)
+                {
+                    await transaction.RollbackAsync();
+                    TempData["ErrorMessage"] = "Package not found or you are not authorized to pick it up.";
+                    return RedirectToAction(nameof(PickUp));
+                }
+
+                if (package.CurrentStatus?.Name != "In Delivery")
+                {
+                    await transaction.RollbackAsync();
+                    TempData["ErrorMessage"] = "This package is not available for pickup. Only packages with 'In Delivery' status can be picked up.";
+                    return RedirectToAction(nameof(PickUp));
+                }
+
+                // Get the "Delivered" status
+                var deliveredStatus = await _context.StatusDefinitions.FirstOrDefaultAsync(s => s.Name == "Delivered");
+                if (deliveredStatus == null)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError("Delivered status not found in database for package pickup");
+                    TempData["ErrorMessage"] = "System configuration error: Delivered status not found. Please contact support.";
+                    return RedirectToAction(nameof(PickUp));
+                }
+
+                // Update package status to "Delivered" and set delivery date
+                package.StatusId = deliveredStatus.StatusId;
+                package.DeliveryDate = DateTime.UtcNow;
+
+                // Create package history entry for the pickup
+                var packageHistory = new PackageHistory
+                {
+                    PackageId = package.PackageId,
+                    StatusId = deliveredStatus.StatusId,
+                    Timestamp = DateTime.UtcNow,
+                    Longitude = package.Longitude, // Keep existing location if any
+                    Latitude = package.Latitude
+                };
+
+                _context.PackageHistories.Add(packageHistory);
+                _context.Packages.Update(package);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("User {UserId} picked up package {PackageId} ({TrackingNumber})", userId, package.PackageId, package.TrackingNumber);
+                TempData["SuccessMessage"] = $"Package '{package.TrackingNumber}' has been successfully picked up and marked as delivered!";
+
+                return RedirectToAction(nameof(PickUp));
+            }
+            catch (DbUpdateException ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Database error while picking up package {PackageId} by user {UserId}", id, userId);
+                TempData["ErrorMessage"] = "A database error occurred while processing the pickup. Please try again.";
+                return RedirectToAction(nameof(PickUp));
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error picking up package {PackageId} by user {UserId}", id, userId);
+                TempData["ErrorMessage"] = "An unexpected error occurred while picking up the package. Please try again.";
+                return RedirectToAction(nameof(PickUp));
+            }
         }
     }
 }

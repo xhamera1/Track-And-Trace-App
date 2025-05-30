@@ -9,7 +9,6 @@
     <title>@ViewData["Title"] - Track & Trace App</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/_10.styles.css" asp-append-version="true" /> @* Upewnij się, że nazwa projektu to _10 lub zmień ją *@
 </head>
 <body>
     <header>
@@ -25,9 +24,6 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
 
                         @if (User.Identity != null && User.Identity.IsAuthenticated)
                         {
@@ -38,7 +34,10 @@
                             @if (User.IsInRole("User"))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="Package" asp-action="SendPackage">Send Package</a>
+                                    <a class="nav-link text-dark" asp-area="" asp-controller="Package" asp-action="SendPackage">Send</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="" asp-controller="Package" asp-action="PickUp">Pick Up</a>
                                 </li>
                                 // Możesz tu dodać inne linki specyficzne dla roli "User"
                             }
@@ -62,13 +61,20 @@
                                 <li class="nav-item">
                                      <a class="nav-link text-dark" asp-area="" asp-controller="Users" asp-action="Index">Manage Users</a>
                                 </li>
-                                // Możesz tu dodać inne linki specyficzne dla roli "Admin"
-                                // np. do zarządzania statusami, wszystkimi paczkami itp.
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="" asp-controller="Package" asp-action="PickUp">Pick Up</a>
+                                </li>
                             }
                         }
                     </ul>
                     <ul class="navbar-nav">
-                        @if (User.Identity != null && User.Identity.IsAuthenticated)
+                        @{
+                            var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+                            var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+                            var isAuthPage = currentController == "Auth" && (currentAction == "Login" || currentAction == "Register");
+                        }
+
+                        @if (User.Identity != null && User.Identity.IsAuthenticated && !isAuthPage)
                         {
                             <li class="nav-item">
                                 <form class="form-inline" asp-controller="Auth" asp-action="Logout" method="post">
@@ -77,7 +83,7 @@
                                 </form>
                             </li>
                         }
-                        else
+                        else if (User.Identity != null && !User.Identity.IsAuthenticated)
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-area="" asp-controller="Auth" asp-action="Login">Login</a>
@@ -114,12 +120,6 @@
             @RenderBody()
         </main>
     </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; @DateTime.Now.Year - Track & Trace App - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

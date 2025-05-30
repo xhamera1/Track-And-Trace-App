@@ -1,0 +1,267 @@
+@model IEnumerable<_10.Models.Package>
+
+@{
+    ViewData["Title"] = "Pick Up - My Received Packages";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-inbox"></i> Pick Up - My Received Packages
+                    </h3>
+                </div>
+                <div class="card-body">
+                    @if (Model != null && Model.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Tracking Number</th>
+                                        <th>Sender</th>
+                                        <th>Status</th>
+                                        <th>Origin</th>
+                                        <th>Destination</th>
+                                        <th>Submission Date</th>
+                                        <th>Delivery Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var package in Model)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <a asp-controller="Package" asp-action="Details" asp-route-id="@package.PackageId"
+                                                   class="text-decoration-none fw-bold text-primary">
+                                                    @package.TrackingNumber
+                                                </a>
+                                            </td>
+                                            <td>
+                                                @if (package.SenderUser != null)
+                                                {
+                                                    <div>
+                                                        @($"{package.SenderUser.FirstName ?? ""} {package.SenderUser.LastName ?? ""}".Trim())
+                                                        @if (string.IsNullOrEmpty($"{package.SenderUser.FirstName ?? ""} {package.SenderUser.LastName ?? ""}".Trim()))
+                                                        {
+                                                            @package.SenderUser.Username
+                                                        }
+                                                    </div>
+                                                    <small class="text-muted">@package.SenderUser.Email</small>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">Unknown</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (package.CurrentStatus != null)
+                                                {
+                                                    if (package.CurrentStatus.Name == "Delivered")
+                                                    {
+                                                        <span class="badge bg-success">@package.CurrentStatus.Name</span>
+                                                    }
+                                                    else if (package.CurrentStatus.Name == "In Delivery")
+                                                    {
+                                                        <span class="badge bg-warning">@package.CurrentStatus.Name</span>
+                                                    }
+                                                    else if (package.CurrentStatus.Name == "In Transit")
+                                                    {
+                                                        <span class="badge bg-info">@package.CurrentStatus.Name</span>
+                                                    }
+                                                    else if (package.CurrentStatus.Name == "New Order")
+                                                    {
+                                                        <span class="badge bg-secondary">@package.CurrentStatus.Name</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-primary">@package.CurrentStatus.Name</span>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">Unknown</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (package.OriginAddress != null)
+                                                {
+                                                    <small>
+                                                        @package.OriginAddress.City, @package.OriginAddress.Country
+                                                    </small>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">N/A</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (package.DestinationAddress != null)
+                                                {
+                                                    <small>
+                                                        @package.DestinationAddress.City, @package.DestinationAddress.Country
+                                                    </small>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">N/A</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <small>@package.SubmissionDate.ToString("yyyy-MM-dd HH:mm")</small>
+                                            </td>
+                                            <td>
+                                                @if (package.DeliveryDate.HasValue)
+                                                {
+                                                    <small class="text-success">@package.DeliveryDate.Value.ToString("yyyy-MM-dd HH:mm")</small>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">Pending</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <a asp-controller="Package" asp-action="Details" asp-route-id="@package.PackageId"
+                                                   class="btn btn-sm btn-outline-primary me-1">
+                                                    <i class="fas fa-eye"></i> Details
+                                                </a>
+                                                @if (package.CurrentStatus?.Name == "In Delivery")
+                                                {
+                                                    <form asp-controller="Package" asp-action="PickUpPackage" asp-route-id="@package.PackageId"
+                                                          method="post" style="display:inline;"
+                                                          onsubmit="return confirm('Are you sure you want to pick up this package? This will mark it as delivered.');">
+                                                        @Html.AntiForgeryToken()
+                                                        <button type="submit" class="btn btn-sm btn-success">
+                                                            <i class="fas fa-hand-paper"></i> Pick Up
+                                                        </button>
+                                                    </form>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No packages to pick up</h5>
+                            <p class="text-muted">You haven't received any packages yet.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model != null && Model.Any())
+    {
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-info-circle"></i> Package Statistics
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center g-3">
+                            <div class="col-lg col-md-6 col-12">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-primary">@Model.Count()</h4>
+                                    <small class="text-muted">Total Packages</small>
+                                </div>
+                            </div>
+                            <div class="col-lg col-md-6 col-12">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-success">@Model.Count(p => p.CurrentStatus?.Name == "Sent")</h4>
+                                    <small class="text-muted">Sent</small>
+                                </div>
+                            </div>
+                            <div class="col-lg col-md-6 col-12">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-warning">@Model.Count(p => p.CurrentStatus?.Name == "In Delivery")</h4>
+                                    <small class="text-muted">In Delivery</small>
+                                </div>
+                            </div>
+                            <div class="col-lg col-md-6 col-12">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-info">@Model.Count(p => p.CurrentStatus?.Name == "Delivered")</h4>
+                                    <small class="text-muted">Delivered</small>
+                                </div>
+                            </div>
+                            <div class="col-lg col-md-6 col-12">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-dark">@Model.Count(p => p.CurrentStatus?.Name != "Delivered" && p.CurrentStatus?.Name != "In Delivery" && p.CurrentStatus?.Name != "Sent")</h4>
+                                    <small class="text-muted">Other</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .card-header i {
+        margin-right: 8px;
+    }
+
+    .badge {
+        font-size: 0.85em;
+    }
+
+    .table th {
+        border-top: none;
+        font-weight: 600;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    /* Statistics cards styling */
+    .border.rounded {
+        border: 1px solid #dee2e6 !important;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        transition: all 0.15s ease-in-out;
+        min-height: 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .border.rounded:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .border.rounded h4 {
+        margin-bottom: 0.25rem;
+        font-weight: 700;
+    }
+
+    .border.rounded small {
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    /* Responsive gap for statistics */
+    .row.g-3 {
+        --bs-gutter-x: 1rem;
+        --bs-gutter-y: 1rem;
+    }
+</style>
+</style>

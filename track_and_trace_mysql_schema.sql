@@ -131,12 +131,12 @@ INSERT IGNORE INTO `StatusDefinitions` (`Name`, `Description`) VALUES
 -- Nadawca: jan_kowalski (UserId=2), Adres nadania: ul. Piękna 5A, Warszawa (AddressId=2)
 -- Odbiorca: anna_limanowska (UserId=3), Adres odbioru: ul. Sezamkowa 12, Gdańsk (AddressId=4)
 INSERT INTO `Packages` (
-    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`, 
-    `PackageSize`, `WeightInKg`, `Notes`, 
-    `OriginAddressId`, `DestinationAddressId`, 
+    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`,
+    `PackageSize`, `WeightInKg`, `Notes`,
+    `OriginAddressId`, `DestinationAddressId`,
     `SubmissionDate`, `StatusId`, `Longitude`, `Latitude`
 ) VALUES (
-    'TT20250530001', 2, 3, 4, 
+    'TT20250530001', 2, 3, 4,
     'Medium', 2.5, 'Ostrożnie, szkło.',
     2, 4,
     NOW(), (SELECT StatusId FROM StatusDefinitions WHERE Name = 'Sent'), 19.9449799, 50.0614300 -- Przykładowa lokalizacja początkowa (Kraków)
@@ -150,9 +150,9 @@ INSERT INTO `PackageHistory` (`PackageId`, `StatusId`, `Timestamp`, `Longitude`,
 -- Nadawca: anna_limanowska (UserId=3), Adres nadania: Aleje Jerozolimskie 100, Warszawa (AddressId=3)
 -- Odbiorca: jan_kowalski (UserId=2), Adres odbioru: ul. Piękna 5A, Warszawa (AddressId=2)
 INSERT INTO `Packages` (
-    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`, 
-    `PackageSize`, `WeightInKg`, `Notes`, 
-    `OriginAddressId`, `DestinationAddressId`, 
+    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`,
+    `PackageSize`, `WeightInKg`, `Notes`,
+    `OriginAddressId`, `DestinationAddressId`,
     `SubmissionDate`, `StatusId`, `Longitude`, `Latitude`
 ) VALUES (
     'TT20250530002', 3, 2, 4,
@@ -171,9 +171,9 @@ INSERT INTO `PackageHistory` (`PackageId`, `StatusId`, `Timestamp`, `Longitude`,
 -- Nadawca: jan_kowalski (UserId=2), Adres nadania: ul. Piękna 5A, Warszawa (AddressId=2)
 -- Odbiorca: admin (UserId=1), Adres odbioru: Rynek Główny 1, Kraków (AddressId=1)
 INSERT INTO `Packages` (
-    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`, 
-    `PackageSize`, `WeightInKg`, `Notes`, 
-    `OriginAddressId`, `DestinationAddressId`, 
+    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`,
+    `PackageSize`, `WeightInKg`, `Notes`,
+    `OriginAddressId`, `DestinationAddressId`,
     `SubmissionDate`, `DeliveryDate`, `StatusId`, `Longitude`, `Latitude`
 ) VALUES (
     'TT20250529003', 2, 1, 4,
@@ -194,9 +194,9 @@ INSERT INTO `PackageHistory` (`PackageId`, `StatusId`, `Timestamp`, `Longitude`,
 -- Nadawca: anna_limanowska (UserId=3), Adres nadania: Aleje Jerozolimskie 100, Warszawa (AddressId=3)
 -- Odbiorca: jan_kowalski (UserId=2), Adres odbioru: ul. Sezamkowa 12, Gdańsk (AddressId=4)
 INSERT INTO `Packages` (
-    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`, 
-    `PackageSize`, `WeightInKg`, `Notes`, 
-    `OriginAddressId`, `DestinationAddressId`, 
+    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`,
+    `PackageSize`, `WeightInKg`, `Notes`,
+    `OriginAddressId`, `DestinationAddressId`,
     `SubmissionDate`, `StatusId`, `Longitude`, `Latitude`
 ) VALUES (
     'TT20250530004', 3, 2, 4,
@@ -215,9 +215,9 @@ INSERT INTO `PackageHistory` (`PackageId`, `StatusId`, `Timestamp`, `Longitude`,
 -- Nadawca: admin (UserId=1), Adres nadania: Rynek Główny 1, Kraków (AddressId=1)
 -- Odbiorca: anna_limanowska (UserId=3), Adres odbioru: Aleje Jerozolimskie 100, Warszawa (AddressId=3)
 INSERT INTO `Packages` (
-    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`, 
-    `PackageSize`, `WeightInKg`, `Notes`, 
-    `OriginAddressId`, `DestinationAddressId`, 
+    `TrackingNumber`, `SenderUserId`, `RecipientUserId`, `AssignedCourierId`,
+    `PackageSize`, `WeightInKg`, `Notes`,
+    `OriginAddressId`, `DestinationAddressId`,
     `SubmissionDate`, `StatusId`, `Longitude`, `Latitude`
 ) VALUES (
     'TT20250530005', 1, 3, 4,
