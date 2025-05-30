@@ -39,7 +39,7 @@
                         @foreach (var package in sentPackages)
                         {
                             <tr>
-                                <td><a asp-action="PackageDetails" asp-route-id="@package.PackageId">@package.TrackingNumber</a></td>
+                                <td><a asp-controller="Package" asp-action="Details" asp-route-id="@package.PackageId">@package.TrackingNumber</a></td>
                                 <td>@package.RecipientUser?.Username</td>
                                 <td>@package.CurrentStatus?.Name</td>
                             </tr>
@@ -68,7 +68,7 @@
                         @foreach (var package in receivedPackages)
                         {
                             <tr>
-                                <td><a asp-action="PackageDetails" asp-route-id="@package.PackageId">@package.TrackingNumber</a></td>
+                                <td><a asp-controller="Package" asp-action="Details" asp-route-id="@package.PackageId">@package.TrackingNumber</a></td>
                                 <td>@package.SenderUser?.Username</td>
                                 <td>@package.CurrentStatus?.Name</td>
                             </tr>
