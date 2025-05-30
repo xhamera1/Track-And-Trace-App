@@ -20,6 +20,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 );
 
 builder.Services.AddScoped<ICourierService, CourierService>();
+builder.Services.AddScoped<IPackageAuthorizationService, PackageAuthorizationService>();
 
 // Add session services
 builder.Services.AddDistributedMemoryCache(); // Required for session state
@@ -36,7 +37,7 @@ builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.C
     {
         options.LoginPath = "/Auth/Login";
         options.LogoutPath = "/Auth/Logout";
-        options.AccessDeniedPath = "/Home/Index"; 
+        options.AccessDeniedPath = "/Home/Index";
         // options.ExpireTimeSpan = TimeSpan.FromHours(1);
     });
 //

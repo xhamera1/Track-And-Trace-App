@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using _10.Data; // Your DbContext
 using _10.Models; // Your Models
 using _10.Attributes; // For [SessionAuthorize]
+using _10.Services; // For authorization service
 
 namespace _10.Controllers
 {
@@ -15,11 +16,16 @@ namespace _10.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<PackageController> _logger;
+        private readonly IPackageAuthorizationService _authorizationService;
 
-        public PackageController(ApplicationDbContext context, ILogger<PackageController> logger)
+        public PackageController(
+            ApplicationDbContext context,
+            ILogger<PackageController> logger,
+            IPackageAuthorizationService authorizationService)
         {
             _context = context;
             _logger = logger;
+            _authorizationService = authorizationService;
         }
 
         // GET: Package/SendPackage
@@ -202,7 +208,7 @@ namespace _10.Controllers
             }
 
             var userId = int.Parse(userIdString);
-            var userRole = Enum.Parse<UserRole>(userRoleString); //
+            var userRole = Enum.Parse<UserRole>(userRoleString);
 
             var package = await _context.Packages
                 .Include(p => p.SenderUser).ThenInclude(su => su.Address) // Eager load sender's address
@@ -220,26 +226,19 @@ namespace _10.Controllers
                 return NotFound();
             }
 
-            bool isAuthorized = userRole == UserRole.Admin ||
-                                package.SenderUserId == userId ||
-                                package.RecipientUserId == userId ||
-                                (userRole == UserRole.Courier && package.AssignedCourierId == userId);
-
-            if (userRole == UserRole.Courier && !isAuthorized)
+            // Use the authorization service to check access
+            var authResult = _authorizationService.GetAuthorizationResult(package, userId, userRole);
+            if (!authResult.IsAuthorized)
             {
-                // Special check for courier who might have been previously assigned
-                // We can't check history since it doesn't track courier assignments directly
-                // This is a limitation that should be addressed with proper audit logging
-                // For now, we'll only allow currently assigned couriers
-                isAuthorized = false;
+                _logger.LogWarning("User {UserId} with role {UserRole} denied access to package {PackageId}: {Reason}",
+                    userId, userRole, package.PackageId, authResult.Reason);
+                
+                TempData["ErrorMessage"] = $"Access denied: {authResult.Reason}";
+                return RedirectToAction("Index", "Home");
             }
 
-
-            if (!isAuthorized)
-            {
-                TempData["ErrorMessage"] = "You are not authorized to view these package details.";
-                return RedirectToAction("Index", "Home"); // Redirect to a general page
-            }
+            _logger.LogInformation("User {UserId} ({AccessType}) accessing package {PackageId} details",
+                userId, authResult.AccessType, package.PackageId);
 
             return View(package);
         }

@@ -1,6 +1,7 @@
 ﻿// File: Controllers/CourierController.cs
 using _10.Data;
 using _10.Models; // For Package, User, StatusDefinition, CourierUpdatePackageStatusViewModel
+using _10.Services; // For authorization service
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -18,11 +19,16 @@ namespace _10.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<CourierController> _logger;
+        private readonly IPackageAuthorizationService _authorizationService;
 
-        public CourierController(ApplicationDbContext context, ILogger<CourierController> logger)
+        public CourierController(
+            ApplicationDbContext context, 
+            ILogger<CourierController> logger,
+            IPackageAuthorizationService authorizationService)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
         }
 
         private int GetCurrentUserId()
@@ -36,6 +42,17 @@ namespace _10.Controllers
                 User.Identity?.IsAuthenticated,
                 string.Join(",", User.Claims.Select(c => $"{c.Type}={c.Value}")));
             throw new InvalidOperationException("Could not determine the ID of the logged-in user. Ensure the authentication mechanism correctly sets NameIdentifier.");
+        }
+
+        private UserRole GetCurrentUserRole()
+        {
+            var roleString = User.FindFirstValue(ClaimTypes.Role);
+            if (Enum.TryParse<UserRole>(roleString, out var userRole))
+            {
+                return userRole;
+            }
+            _logger.LogWarning("Could not determine the role of the logged-in user. Role claim: {role}", roleString);
+            throw new InvalidOperationException("Could not determine the role of the logged-in user. Ensure the authentication mechanism correctly sets the role claim.");
         }
 
         // GET: /Courier/ActivePackages (or /Courier, /Courier/Dashboard)
@@ -155,6 +172,8 @@ namespace _10.Controllers
             try
             {
                 var courierId = GetCurrentUserId();
+                var userRole = GetCurrentUserRole();
+                
                 var package = await _context.Packages
                     .Include(p => p.SenderUser)
                     .Include(p => p.RecipientUser)
@@ -162,15 +181,29 @@ namespace _10.Controllers
                     .Include(p => p.DestinationAddress)
                     .Include(p => p.CurrentStatus)
                     .Include(p => p.History).ThenInclude(h => h.Status)
+                    .Include(p => p.AssignedCourier) // Include assigned courier for authorization
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(p => p.PackageId == id.Value && p.AssignedCourierId == courierId);
+                    .FirstOrDefaultAsync(p => p.PackageId == id.Value);
 
                 if (package == null)
                 {
-                    _logger.LogWarning("Package {PackageId} not found for courier {CourierId} or not assigned to them.", id.Value, courierId);
-                    TempData["ErrorMessage"] = "Package not found or not assigned to you.";
+                    return NotFound();
+                }
+
+                // Use the authorization service to check access
+                var authResult = _authorizationService.GetAuthorizationResult(package, courierId, userRole);
+                if (!authResult.IsAuthorized)
+                {
+                    _logger.LogWarning("Courier {CourierId} with role {UserRole} denied access to package {PackageId}: {Reason}",
+                        courierId, userRole, package.PackageId, authResult.Reason);
+                    
+                    TempData["ErrorMessage"] = $"Access denied: {authResult.Reason}";
                     return RedirectToAction(nameof(ActivePackages));
                 }
+
+                _logger.LogInformation("Courier {CourierId} ({AccessType}) accessing package {PackageId} details",
+                    courierId, authResult.AccessType, package.PackageId);
+
                 return View(package);
             }
             catch (InvalidOperationException ex)
@@ -199,15 +232,24 @@ namespace _10.Controllers
             try
             {
                 var courierId = GetCurrentUserId();
+                var userRole = GetCurrentUserRole();
+                
                 var package = await _context.Packages
                     .Include(p => p.CurrentStatus)
+                    .Include(p => p.AssignedCourier) // Include for authorization
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(p => p.PackageId == id.Value && p.AssignedCourierId == courierId);
+                    .FirstOrDefaultAsync(p => p.PackageId == id.Value);
 
                 if (package == null)
                 {
-                    _logger.LogWarning("Package {PackageId} not found for courier {CourierId} or not assigned (UpdateStatus GET).", id.Value, courierId);
-                    TempData["ErrorMessage"] = "Package not found or not assigned to you.";
+                    return NotFound();
+                }
+
+                // Use the authorization service to check modification access
+                if (!_authorizationService.IsAuthorizedToModifyPackage(package, courierId, userRole))
+                {
+                    _logger.LogWarning("Courier {CourierId} denied access to modify package {PackageId}", courierId, package.PackageId);
+                    TempData["ErrorMessage"] = "You are not authorized to update this package status.";
                     return RedirectToAction(nameof(ActivePackages));
                 }
                 
@@ -315,14 +357,26 @@ namespace _10.Controllers
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
+                    var userRole = GetCurrentUserRole();
+                    
                     packageToUpdate = await _context.Packages
-                        .Include(p => p.CurrentStatus) 
-                        .FirstOrDefaultAsync(p => p.PackageId == viewModel.PackageId && p.AssignedCourierId == courierId);
+                        .Include(p => p.CurrentStatus)
+                        .Include(p => p.AssignedCourier) // Include for authorization
+                        .FirstOrDefaultAsync(p => p.PackageId == viewModel.PackageId);
 
                     if (packageToUpdate == null)
                     {
                         await transaction.RollbackAsync();
-                        ModelState.AddModelError(string.Empty, "Package not found or you do not have permission to update it.");
+                        ModelState.AddModelError(string.Empty, "Package not found.");
+                        await PopulateViewModelForError(viewModel);
+                        return View(viewModel);
+                    }
+
+                    // Use the authorization service to check modification access
+                    if (!_authorizationService.IsAuthorizedToModifyPackage(packageToUpdate, courierId, userRole))
+                    {
+                        await transaction.RollbackAsync();
+                        ModelState.AddModelError(string.Empty, "You do not have permission to update this package.");
                         await PopulateViewModelForError(viewModel);
                         return View(viewModel);
                     }
