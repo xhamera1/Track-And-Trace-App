@@ -118,13 +118,9 @@ INSERT IGNORE INTO `Users` (`Username`, `Email`, `Password`, `ApiKey`, `FirstNam
 
 -- Insert Status Definitions
 INSERT IGNORE INTO `StatusDefinitions` (`Name`, `Description`) VALUES
-('New Order', 'Paczka została zgłoszona do wysyłki.'),
-('In Preparation', 'Nadawca przygotowuje paczkę do nadania.'),
 ('Sent', 'Paczka została nadana i jest w drodze do odbiorcy.'),
 ('In Delivery', 'Kurier lub dostawca jest w trakcie doręczania paczki.'),
-('Delivered', 'Paczka została pomyślnie dostarczona odbiorcy.'),
-('Canceled', 'Zamówienie na wysyłkę paczki zostało anulowane.'),
-('Return', 'Paczka jest zwracana do nadawcy (np. z powodu nieodebrania).');
+('Delivered', 'Paczka została pomyślnie dostarczona odbiorcy.');
 
 -- Insert a Sample Package
 -- Uwaga: W
