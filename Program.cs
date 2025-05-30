@@ -21,6 +21,20 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddScoped<ICourierService, CourierService>();
 builder.Services.AddScoped<IPackageAuthorizationService, PackageAuthorizationService>();
+builder.Services.AddScoped<IPackageLocationService, PackageLocationService>();
+
+// Add HttpClient for geocoding service
+builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>();
+
+// Configure geocoding service options
+builder.Services.Configure<NominatimGeocodingOptions>(options =>
+{
+    options.UserAgent = "PackageTrackingApp/1.0";
+    options.ContactEmail = "admin@packagetracking.com"; // Replace with your contact email
+    options.TimeoutSeconds = 10;
+    options.MaxResults = 1;
+    options.Language = "en";
+});
 
 // Add session services
 builder.Services.AddDistributedMemoryCache(); // Required for session state

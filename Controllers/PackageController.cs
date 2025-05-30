@@ -17,15 +17,18 @@ namespace _10.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<PackageController> _logger;
         private readonly IPackageAuthorizationService _authorizationService;
+        private readonly IPackageLocationService _packageLocationService;
 
         public PackageController(
             ApplicationDbContext context,
             ILogger<PackageController> logger,
-            IPackageAuthorizationService authorizationService)
+            IPackageAuthorizationService authorizationService,
+            IPackageLocationService packageLocationService)
         {
             _context = context;
             _logger = logger;
             _authorizationService = authorizationService;
+            _packageLocationService = packageLocationService;
         }
 
         // GET: Package/SendPackage
@@ -117,12 +120,39 @@ namespace _10.Controllers
                     _context.Packages.Add(package);
                     await _context.SaveChangesAsync(); // Save to get PackageId
 
+                    // Load the package with addresses for geocoding
+                    package.OriginAddress = originAddress;
+                    package.DestinationAddress = destinationAddress;
+
+                    // Try to populate package coordinates using geocoding service
+                    try
+                    {
+                        var coordinatesPopulated = await _packageLocationService.PopulatePackageCoordinatesAsync(package);
+                        if (coordinatesPopulated)
+                        {
+                            _context.Packages.Update(package);
+                            await _context.SaveChangesAsync();
+                            _logger.LogInformation("Successfully populated coordinates for package {PackageId} from origin address", package.PackageId);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Could not populate coordinates for package {PackageId} - geocoding failed", package.PackageId);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error during geocoding for package {PackageId}. Package will be created without coordinates.", package.PackageId);
+                        // Continue package creation even if geocoding fails
+                    }
+
                     // Create initial package history entry
                     var packageHistory = new PackageHistory
                     {
                         PackageId = package.PackageId,
                         StatusId = initialStatus.StatusId,
-                        Timestamp = DateTime.UtcNow
+                        Timestamp = DateTime.UtcNow,
+                        Longitude = package.Longitude,
+                        Latitude = package.Latitude
                     };
                     _context.PackageHistories.Add(packageHistory);
                     await _context.SaveChangesAsync();
@@ -232,7 +262,7 @@ namespace _10.Controllers
             {
                 _logger.LogWarning("User {UserId} with role {UserRole} denied access to package {PackageId}: {Reason}",
                     userId, userRole, package.PackageId, authResult.Reason);
-                
+
                 TempData["ErrorMessage"] = $"Access denied: {authResult.Reason}";
                 return RedirectToAction("Index", "Home");
             }
@@ -331,14 +361,60 @@ namespace _10.Controllers
                 package.StatusId = deliveredStatus.StatusId;
                 package.DeliveryDate = DateTime.UtcNow;
 
+                // Try to geocode the destination address for delivery location
+                decimal? deliveryLatitude = package.Latitude;
+                decimal? deliveryLongitude = package.Longitude;
+
+                try
+                {
+                    // Load destination address if not already loaded
+                    if (package.DestinationAddress == null)
+                    {
+                        var destinationAddress = await _context.Addresses
+                            .FirstOrDefaultAsync(a => a.AddressId == package.DestinationAddressId);
+
+                        if (destinationAddress != null)
+                        {
+                            package.DestinationAddress = destinationAddress;
+                        }
+                    }
+
+                    if (package.DestinationAddress != null)
+                    {
+                        var geocodingResult = await _packageLocationService.GeocodeAddressAsync(package.DestinationAddress);
+                        if (geocodingResult.IsSuccess && geocodingResult.Latitude.HasValue && geocodingResult.Longitude.HasValue)
+                        {
+                            deliveryLatitude = geocodingResult.Latitude.Value;
+                            deliveryLongitude = geocodingResult.Longitude.Value;
+
+                            // Update package with final delivery coordinates
+                            package.Latitude = deliveryLatitude;
+                            package.Longitude = deliveryLongitude;
+
+                            _logger.LogInformation("Updated package {PackageId} with delivery coordinates: {Lat}, {Lon}",
+                                package.PackageId, deliveryLatitude, deliveryLongitude);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Could not geocode destination address for package {PackageId} during delivery: {Error}",
+                                package.PackageId, geocodingResult.ErrorMessage);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during destination geocoding for package {PackageId} delivery", package.PackageId);
+                    // Continue with delivery even if geocoding fails
+                }
+
                 // Create package history entry for the pickup
                 var packageHistory = new PackageHistory
                 {
                     PackageId = package.PackageId,
                     StatusId = deliveredStatus.StatusId,
                     Timestamp = DateTime.UtcNow,
-                    Longitude = package.Longitude, // Keep existing location if any
-                    Latitude = package.Latitude
+                    Longitude = deliveryLongitude,
+                    Latitude = deliveryLatitude
                 };
 
                 _context.PackageHistories.Add(packageHistory);

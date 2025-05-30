@@ -20,15 +20,18 @@ namespace _10.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ILogger<CourierController> _logger;
         private readonly IPackageAuthorizationService _authorizationService;
+        private readonly IPackageLocationService _packageLocationService;
 
         public CourierController(
             ApplicationDbContext context,
             ILogger<CourierController> logger,
-            IPackageAuthorizationService authorizationService)
+            IPackageAuthorizationService authorizationService,
+            IPackageLocationService packageLocationService)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
+            _packageLocationService = packageLocationService ?? throw new ArgumentNullException(nameof(packageLocationService));
         }
 
         private int GetCurrentUserId()
@@ -402,10 +405,67 @@ namespace _10.Controllers
                     bool locationChanged = packageToUpdate.Longitude != viewModel.NewLongitude || packageToUpdate.Latitude != viewModel.NewLatitude;
                     bool notesChanged = packageToUpdate.Notes != viewModel.Notes;
 
+                    // Smart coordinate handling with geocoding fallback
+                    decimal? finalLatitude = viewModel.NewLatitude;
+                    decimal? finalLongitude = viewModel.NewLongitude;
+
+                    // If coordinates are not provided manually, try to use geocoding based on status
+                    if (!finalLatitude.HasValue || !finalLongitude.HasValue)
+                    {
+                        try
+                        {
+                            Address? addressToGeocode = null;
+
+                            if (newStatus.Name == "Delivered")
+                            {
+                                // For delivery, use destination address
+                                if (packageToUpdate.DestinationAddress == null)
+                                {
+                                    packageToUpdate.DestinationAddress = await _context.Addresses
+                                        .FirstOrDefaultAsync(a => a.AddressId == packageToUpdate.DestinationAddressId);
+                                }
+                                addressToGeocode = packageToUpdate.DestinationAddress;
+                            }
+                            else if (newStatus.Name == "Sent" && (!packageToUpdate.Latitude.HasValue || !packageToUpdate.Longitude.HasValue))
+                            {
+                                // For sent packages without coordinates, use origin address
+                                if (packageToUpdate.OriginAddress == null)
+                                {
+                                    packageToUpdate.OriginAddress = await _context.Addresses
+                                        .FirstOrDefaultAsync(a => a.AddressId == packageToUpdate.OriginAddressId);
+                                }
+                                addressToGeocode = packageToUpdate.OriginAddress;
+                            }
+
+                            if (addressToGeocode != null)
+                            {
+                                var geocodingResult = await _packageLocationService.GeocodeAddressAsync(addressToGeocode);
+                                if (geocodingResult.IsSuccess && geocodingResult.Latitude.HasValue && geocodingResult.Longitude.HasValue)
+                                {
+                                    finalLatitude = geocodingResult.Latitude.Value;
+                                    finalLongitude = geocodingResult.Longitude.Value;
+                                    locationChanged = true; // Mark as changed since we got new coordinates
+
+                                    _logger.LogInformation("Auto-geocoded coordinates for package {PackageId} status {StatusName}: {Lat}, {Lon}",
+                                        packageToUpdate.PackageId, newStatus.Name, finalLatitude, finalLongitude);
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("Failed to auto-geocode address for package {PackageId} status {StatusName}: {Error}",
+                                        packageToUpdate.PackageId, newStatus.Name, geocodingResult.ErrorMessage);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error during auto-geocoding for package {PackageId} status update", packageToUpdate.PackageId);
+                            // Continue without geocoding
+                        }
+                    }
 
                     packageToUpdate.StatusId = viewModel.NewStatusId;
-                    packageToUpdate.Longitude = viewModel.NewLongitude;
-                    packageToUpdate.Latitude = viewModel.NewLatitude;
+                    packageToUpdate.Longitude = finalLongitude;
+                    packageToUpdate.Latitude = finalLatitude;
                     packageToUpdate.Notes = viewModel.Notes;
 
                     if (newStatus.Name == "Delivered" && packageToUpdate.DeliveryDate == null)
@@ -421,8 +481,8 @@ namespace _10.Controllers
                             PackageId = packageToUpdate.PackageId,
                             StatusId = viewModel.NewStatusId,
                             Timestamp = DateTime.UtcNow,
-                            Longitude = viewModel.NewLongitude,
-                            Latitude = viewModel.NewLatitude
+                            Longitude = finalLongitude,
+                            Latitude = finalLatitude
                         };
                         _context.PackageHistories.Add(packageHistoryEntry);
                     }
