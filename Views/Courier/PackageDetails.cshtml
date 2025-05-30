@@ -1,0 +1,139 @@
+@model _10.Models.Package
+
+@{
+    ViewData["Title"] = Model != null ? $"Package Details: {Model.TrackingNumber}" : "Package Details";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div style="color: green; border: 1px solid green; padding: 10px; margin-bottom:15px;">
+        @TempData["SuccessMessage"]
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div style="color: red; border: 1px solid red; padding: 10px; margin-bottom:15px;">
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+@if (Model == null)
+{
+    <p>Could not load package details.</p>
+    <a href="@Url.Action("ActivePackages", "Courier")">Back to List</a>
+}
+else
+{
+    <div>
+        <h4>Main Data</h4>
+        <hr />
+        <dl>
+            <dt>Tracking Number</dt>
+            <dd>@Html.DisplayFor(model => model.TrackingNumber)</dd>
+
+            <dt>Status</dt>
+            <dd>@(Model.CurrentStatus?.Description ?? "N/A")</dd>
+
+            <dt>Submission Date</dt>
+            <dd>@Model.SubmissionDate.ToString("yyyy-MM-dd HH:mm")</dd>
+
+            <dt>Delivery Date</dt>
+            <dd>@(Model.DeliveryDate?.ToString("yyyy-MM-dd HH:mm") ?? "Not yet delivered")</dd>
+
+            <dt>Sender</dt>
+            <dd>@(Model.SenderUser?.UserName ?? "N/A") (@(Model.SenderUser?.Email ?? "N/A"))</dd>
+
+            <dt>Recipient</dt>
+            <dd>@(Model.RecipientUser?.UserName ?? "N/A") (@(Model.RecipientUser?.Email ?? "N/A"))</dd>
+
+            <dt>Origin Address</dt>
+            <dd>
+                @if (Model.OriginAddress != null)
+                {
+                    @($"{Model.OriginAddress.Street}, {Model.OriginAddress.ZipCode} {Model.OriginAddress.City}, {Model.OriginAddress.Country}")
+                }
+                else { @Html.Raw("N/A") }
+            </dd>
+
+            <dt>Destination Address</dt>
+            <dd>
+                @if (Model.DestinationAddress != null)
+                {
+                    @($"{Model.DestinationAddress.Street}, {Model.DestinationAddress.ZipCode} {Model.DestinationAddress.City}, {Model.DestinationAddress.Country}")
+                }
+                else { @Html.Raw("N/A") }
+            </dd>
+
+            <dt>Size</dt>
+            <dd>@Html.DisplayFor(model => model.PackageSize)</dd>
+
+            <dt>Weight (kg)</dt>
+            <dd>@(Model.WeightInKg?.ToString("F2") ?? "N/A")</dd>
+
+            <dt>Current Location</dt>
+            <dd>
+                @if (Model.Latitude.HasValue && Model.Longitude.HasValue)
+                {
+                    @($"Lat: {Model.Latitude.Value.ToString("F5")}, Lon: {Model.Longitude.Value.ToString("F5")}")
+                    @Html.Raw($" ( <a href='https://maps.google.com/?q={Model.Latitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)},{Model.Longitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}' target='_blank'>Show on Map</a> )")
+                }
+                else
+                {
+                    @Html.Raw("Unknown")
+                }
+            </dd>
+            
+            <dt>Notes</dt>
+            <dd>@Html.Raw(Model.Notes?.Replace("\n", "<br />") ?? "None")</dd>
+        </dl>
+    </div>
+
+    @if (Model.History != null && Model.History.Any())
+    {
+        <h4>Package History</h4>
+        <table border="1" cellpadding="5" cellspacing="0" style="width:100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th>Date & Time</th>
+                    <th>Status</th>
+                    <th>Location (Lat, Lon)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var historyEntry in Model.History.OrderByDescending(h => h.Timestamp))
+                {
+                    <tr>
+                        <td>@historyEntry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@(historyEntry.Status?.Description ?? "N/A")</td>
+                        <td>
+                            @if (historyEntry.Latitude.HasValue && historyEntry.Longitude.HasValue)
+                            {
+                                @($"Lat: {historyEntry.Latitude.Value.ToString("F5")}, Lon: {historyEntry.Longitude.Value.ToString("F5")}")
+                                @Html.Raw($" ( <a href='https://maps.google.com/?q={historyEntry.Latitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)},{historyEntry.Longitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}' target='_blank'>Show</a> )")
+                            }
+                            else
+                            {
+                                @Html.Raw("Unknown")
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>No history for this package.</p>
+    }
+
+    <hr/>
+    <div>
+        @if (Model.CurrentStatus?.Name != "Delivered")
+        {
+            <a href="@Url.Action("UpdateStatus", "Courier", new { id = Model.PackageId })">Update Status</a> @Html.Raw(" | ")
+        }
+        <a href="@Url.Action("ActivePackages", "Courier")">Back to Active Packages</a>
+    </div>
+}

@@ -1,0 +1,101 @@
+@model _10.Models.CourierUpdatePackageStatusViewModel 
+@* Changed namespace for ViewModel *@
+
+@{
+    ViewData["Title"] = (Model != null && !string.IsNullOrEmpty(Model.TrackingNumber)) 
+                        ? $"Update Package Status: {Model.TrackingNumber}" 
+                        : "Update Package Status";
+}
+
+<h1>@ViewData["Title"]</h1>
+<hr />
+
+@if (Model == null) {
+    <p>Error: Cannot load the update form data.</p>
+    <a href="@Url.Action("ActivePackages", "Courier")">Back to List</a>
+}
+else
+{
+    <div>
+        <form asp-action="UpdateStatus" asp-route-id="@Model.PackageId" method="post">
+            @Html.AntiForgeryToken()
+            
+            <div asp-validation-summary="All" style="color:red; border: 1px solid red; padding: 10px; margin-bottom:15px;"></div>
+
+            <input type="hidden" asp-for="PackageId" />
+            <input type="hidden" asp-for="TrackingNumber" />
+            <input type="hidden" asp-for="CurrentStatusName" />
+            <input type="hidden" asp-for="CurrentLongitude" />
+            <input type="hidden" asp-for="CurrentLatitude" />
+
+            <div>
+                <p><strong>Tracking Number:</strong> @(Model.TrackingNumber ?? "N/A")</p>
+                <p><strong>Current Status:</strong> @(Model.CurrentStatusName ?? "N/A")</p>
+                <p>
+                    <strong>Current Location:</strong>
+                    @if (Model.CurrentLatitude.HasValue && Model.CurrentLongitude.HasValue)
+                    {
+                        @($"Lat: {Model.CurrentLatitude.Value.ToString("F5")}, Lon: {Model.CurrentLongitude.Value.ToString("F5")}")
+                    }
+                    else
+                    {
+                        @Html.Raw("Unknown")
+                    }
+                </p>
+            </div>
+            <hr/>
+
+            @if (Model.AvailableStatuses != null && Model.AvailableStatuses.Any())
+            {
+                <div>
+                    <label asp-for="NewStatusId"></label>:<br />
+                    <select asp-for="NewStatusId" asp-items="Model.AvailableStatuses">
+                        @* The controller pre-selects the current status, so a blank option might not be needed unless you want to force a choice *@
+                    </select><br />
+                    <span asp-validation-for="NewStatusId" style="color:red;"></span>
+                </div>
+                <br />
+            }
+            else if (Model.CurrentStatusName == "Delivered") 
+            {
+                 <p>This package has already been delivered. Status cannot be changed.</p>
+                 <input type="hidden" asp-for="NewStatusId" /> 
+            }
+            else
+            {
+                <p>No available statuses to change to, or the current status does not allow further changes by courier.</p>
+                 <input type="hidden" asp-for="NewStatusId" /> 
+            }
+
+            <div>
+                <label asp-for="NewLatitude"></label> (e.g., 50.0614):<br />
+                <input asp-for="NewLatitude" /><br />
+                <span asp-validation-for="NewLatitude" style="color:red;"></span>
+            </div>
+            <br />
+            <div>
+                <label asp-for="NewLongitude"></label> (e.g., 19.9366):<br />
+                <input asp-for="NewLongitude" /><br />
+                <span asp-validation-for="NewLongitude" style="color:red;"></span>
+            </div>
+            <br />
+            <div>
+                <label asp-for="Notes"></label>:<br />
+                <textarea asp-for="Notes" rows="3" cols="50">@Model.Notes</textarea><br />
+                <span asp-validation-for="Notes" style="color:red;"></span>
+            </div>
+            <br />
+            <div>
+                @if (Model.CurrentStatusName != "Delivered") // Only show save button if not delivered
+                {
+                     <button type="submit">Save Changes</button>
+                }
+                <a href="@Url.Action("PackageDetails", "Courier", new { id = Model.PackageId })">Cancel</a>
+            </div>
+        </form>
+    </div>
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

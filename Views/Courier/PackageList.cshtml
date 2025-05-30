@@ -1,0 +1,81 @@
+@model IEnumerable<_10.Models.Package>
+
+@{
+    // Title is set in the controller via ViewData["Title"]
+}
+
+<h1>@ViewData["Title"]</h1>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div style="color: red; border: 1px solid red; padding: 10px; margin-bottom:15px;">
+        @TempData["ErrorMessage"]
+    </div>
+}
+@if (TempData["SuccessMessage"] != null)
+{
+    <div style="color: green; border: 1px solid green; padding: 10px; margin-bottom:15px;">
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+@if (Model != null && Model.Any())
+{
+    <table border="1" cellpadding="5" cellspacing="0" style="width:100%; border-collapse: collapse;">
+        <thead>
+            <tr>
+                <th>Tracking Number</th>
+                <th>Status</th>
+                <th>Origin Address</th>
+                <th>Destination Address</th>
+                <th>Submission Date</th>
+                <th>Delivery Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@Html.DisplayFor(modelItem => item.TrackingNumber)</td>
+                    <td>@(item.CurrentStatus?.Description ?? "N/A")</td>
+                    <td>
+                        @if (item.OriginAddress != null)
+                        {
+                            @($"{item.OriginAddress.Street}, {item.OriginAddress.ZipCode} {item.OriginAddress.City}")
+                        }
+                        else { @Html.Raw("N/A") }
+                    </td>
+                    <td>
+                        @if (item.DestinationAddress != null)
+                        {
+                            @($"{item.DestinationAddress.Street}, {item.DestinationAddress.ZipCode} {item.DestinationAddress.City}")
+                        }
+                        else { @Html.Raw("N/A") }
+                    </td>
+                    <td>@item.SubmissionDate.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@(item.DeliveryDate?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")</td>
+                    <td>
+                        <a href="@Url.Action("PackageDetails", "Courier", new { id = item.PackageId })">Details</a>
+                        @if (item.CurrentStatus?.Name != "Delivered")
+                        {
+                            @Html.Raw(" | ")
+                            <a href="@Url.Action("UpdateStatus", "Courier", new { id = item.PackageId })">Update Status</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No packages to display for this view.</p>
+}
+
+<hr />
+<div>
+    <a href="@Url.Action("ActivePackages", "Courier")">Active Packages</a> |
+    <a href="@Url.Action("DeliveredPackages", "Courier")">Delivered Packages</a> |
+    <a href="@Url.Action("AllMyPackages", "Courier")">All My Packages</a>
+</div>
