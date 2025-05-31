@@ -2,9 +2,9 @@ using _10.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using _10.Attributes;
-using System.Threading.Tasks; // Added for Task<IActionResult>
-using Microsoft.AspNetCore.Http; // Added for HttpContext.Session
-using _10.Models; // Added for AccountViewModel
+using System.Threading.Tasks; 
+using Microsoft.AspNetCore.Http; 
+using _10.Models; 
 using System;
 
 namespace _10.Controllers;
@@ -33,7 +33,7 @@ public class UsersController : Controller
         var userId = HttpContext.Session.GetString("UserId");
         if (string.IsNullOrEmpty(userId))
         {
-            return RedirectToAction("Login", "Auth"); // Redirect to login if no user is logged in
+            return RedirectToAction("Login", "Auth"); 
         }
 
         var user = await _context.Users
@@ -42,7 +42,7 @@ public class UsersController : Controller
 
         if (user == null)
         {
-            return NotFound(); // User not found
+            return NotFound(); 
         }
 
         var viewModel = new AccountViewModel
@@ -51,7 +51,7 @@ public class UsersController : Controller
             Email = user.Email,
             FirstName = user.FirstName ?? string.Empty,
             LastName = user.LastName ?? string.Empty,
-            Birthday = user.Birthday ?? DateTime.MinValue, // Handle possible null DateTime
+            Birthday = user.Birthday ?? DateTime.MinValue, 
             Role = user.Role.ToString(),
             Street = user.Address?.Street ?? string.Empty,
             City = user.Address?.City ?? string.Empty,
@@ -144,7 +144,7 @@ public class UsersController : Controller
                 Country = model.Country
             };
             _context.Addresses.Add(newAddress);
-            await _context.SaveChangesAsync(); // Save new address to get AddressId
+            await _context.SaveChangesAsync(); 
             user.AddressId = newAddress.AddressId;
             user.Address = newAddress;
         }

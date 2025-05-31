@@ -193,7 +193,6 @@ namespace _10.Controllers
                     return NotFound();
                 }
 
-                // Use the authorization service to check access
                 var authResult = _authorizationService.GetAuthorizationResult(package, courierId, userRole);
                 if (!authResult.IsAuthorized)
                 {
@@ -239,7 +238,7 @@ namespace _10.Controllers
 
                 var package = await _context.Packages
                     .Include(p => p.CurrentStatus)
-                    .Include(p => p.AssignedCourier) // Include for authorization
+                    .Include(p => p.AssignedCourier) 
                     .AsNoTracking()
                     .FirstOrDefaultAsync(p => p.PackageId == id.Value);
 
@@ -248,7 +247,6 @@ namespace _10.Controllers
                     return NotFound();
                 }
 
-                // Use the authorization service to check modification access
                 if (!_authorizationService.IsAuthorizedToModifyPackage(package, courierId, userRole))
                 {
                     _logger.LogWarning("Courier {CourierId} denied access to modify package {PackageId}", courierId, package.PackageId);
@@ -319,9 +317,8 @@ namespace _10.Controllers
             }
 
             var courierId = GetCurrentUserId();
-            Package? packageToUpdate = null; // To store the package entity
+            Package? packageToUpdate = null; 
 
-            // Helper to repopulate ViewModel on error, ensuring dropdowns are filled
             async Task PopulateViewModelForError(CourierUpdatePackageStatusViewModel vm)
             {
                 var currentPackageData = await _context.Packages
@@ -332,8 +329,8 @@ namespace _10.Controllers
                 {
                     vm.TrackingNumber = currentPackageData.TrackingNumber;
                     vm.CurrentStatusName = currentPackageData.CurrentStatus?.Description;
-                    vm.CurrentLongitude = currentPackageData.Longitude; // For display
-                    vm.CurrentLatitude = currentPackageData.Latitude;   // For display
+                    vm.CurrentLongitude = currentPackageData.Longitude;
+                    vm.CurrentLatitude = currentPackageData.Latitude;
                 }
 
                 List<string> allowedNewStatusNamesOnError = new List<string>();
@@ -344,11 +341,9 @@ namespace _10.Controllers
                 }
                 else if (currentPackageData?.CurrentStatus?.Name == "In Delivery")
                 {
-                    allowedNewStatusNamesOnError.Add("In Delivery"); // Allow re-updating "In Delivery" with new location
+                    allowedNewStatusNamesOnError.Add("In Delivery"); 
                     allowedNewStatusNamesOnError.Add("Delivered");
                 }
-                // If current status is null or not Sent/In Delivery, courier might not be able to change it via this form
-                // Or, if it's a new package being assigned and still "Sent", allow changes.
 
                 vm.AvailableStatuses = await _context.StatusDefinitions
                                            .Where(s => allowedNewStatusNamesOnError.Contains(s.Name))
@@ -367,9 +362,9 @@ namespace _10.Controllers
 
                     packageToUpdate = await _context.Packages
                         .Include(p => p.CurrentStatus)
-                        .Include(p => p.OriginAddress)      // Eager load for geocoding fallback
-                        .Include(p => p.DestinationAddress) // Eager load for geocoding fallback
-                        .Include(p => p.AssignedCourier)    // For authorization
+                        .Include(p => p.OriginAddress)  
+                        .Include(p => p.DestinationAddress) 
+                        .Include(p => p.AssignedCourier)  
                         .FirstOrDefaultAsync(p => p.PackageId == viewModel.PackageId);
 
                     if (packageToUpdate == null)
@@ -386,7 +381,7 @@ namespace _10.Controllers
                         TempData["ErrorMessage"] = "You are not authorized to update this package.";
                         _logger.LogWarning("Courier {CourierId} (Role: {UserRole}) attempt to modify package {PackageId} denied.", courierId, userRole, packageToUpdate.PackageId);
                         await PopulateViewModelForError(viewModel);
-                        return View(viewModel); // Or RedirectToAction(nameof(ActivePackages))
+                        return View(viewModel);
                     }
 
                     var newStatus = await _context.StatusDefinitions.FindAsync(viewModel.NewStatusId);
@@ -407,12 +402,11 @@ namespace _10.Controllers
                     }
 
                     bool statusChanged = packageToUpdate.StatusId != viewModel.NewStatusId;
-                    bool locationChangedByUser = false; // Flag to track if location was changed by user input this cycle
+                    bool locationChangedByUser = false;
 
-                    decimal? finalLatitude = packageToUpdate.Latitude; // Default to existing
-                    decimal? finalLongitude = packageToUpdate.Longitude; // Default to existing
+                    decimal? finalLatitude = packageToUpdate.Latitude; 
+                    decimal? finalLongitude = packageToUpdate.Longitude; 
 
-                    // Priority 1: Direct coordinate input (if provided)
                     if (viewModel.NewLatitude.HasValue && viewModel.NewLongitude.HasValue)
                     {
                         finalLatitude = viewModel.NewLatitude.Value;
@@ -420,14 +414,13 @@ namespace _10.Controllers
                         locationChangedByUser = true;
                         _logger.LogInformation("Package {PackageId}: Using directly provided coordinates Lat={Lat}, Lon={Lon}", packageToUpdate.PackageId, finalLatitude, finalLongitude);
                     }
-                    // Priority 2: New address provided by courier for geocoding
                     else if (viewModel.HasNewLocationAddress())
                     {
                         _logger.LogInformation("Package {PackageId}: Attempting to geocode provided address: {Street}, {City}, {Zip}, {Country}",
                                                packageToUpdate.PackageId, viewModel.NewLocationStreet, viewModel.NewLocationCity, viewModel.NewLocationZipCode, viewModel.NewLocationCountry);
                         var addressToGeocode = new Address
                         {
-                            Street = viewModel.NewLocationStreet!, // Null checks done by HasNewLocationAddress
+                            Street = viewModel.NewLocationStreet!,
                             City = viewModel.NewLocationCity!,
                             ZipCode = viewModel.NewLocationZipCode!,
                             Country = viewModel.NewLocationCountry!
@@ -451,7 +444,6 @@ namespace _10.Controllers
                             return View(viewModel);
                         }
                     }
-                    // Priority 3: Geocoding fallback for specific statuses if no user input for location
                     else if (newStatus.Name == "Delivered" && packageToUpdate.DestinationAddress != null)
                     {
                          _logger.LogInformation("Package {PackageId}: Status changed to 'Delivered'. Attempting to geocode destination address.", packageToUpdate.PackageId);
@@ -460,24 +452,21 @@ namespace _10.Controllers
                         {
                             finalLatitude = geocodingResult.Latitude.Value;
                             finalLongitude = geocodingResult.Longitude.Value;
-                            locationChangedByUser = true; // Location derived from status change
+                            locationChangedByUser = true;
                             _logger.LogInformation("Package {PackageId}: Geocoded destination for 'Delivered' status to Lat={Lat}, Lon={Lon}", packageToUpdate.PackageId, finalLatitude, finalLongitude);
                         }
                          else
                         {
                              _logger.LogWarning("Package {PackageId}: Failed to geocode destination address for 'Delivered' status. Error: {Error}", packageToUpdate.PackageId, geocodingResult.ErrorMessage);
-                             // Continue without new coordinates if geocoding destination fails
                         }
                     }
-                    // Add more fallback logic if needed, e.g., for "In Delivery" if no specific location provided.
-                    // For now, if no address/coords provided and not "Delivered", location remains as is unless explicitly cleared.
+
 
                     bool notesChanged = packageToUpdate.Notes != viewModel.Notes;
 
-                    // Determine if the final location actually differs from the package's current location
                     bool finalLocationIsDifferent = packageToUpdate.Latitude != finalLatitude || packageToUpdate.Longitude != finalLongitude;
 
-                    packageToUpdate.StatusId = newStatus.StatusId; // Use the ID from the fetched newStatus object
+                    packageToUpdate.StatusId = newStatus.StatusId; 
                     packageToUpdate.Longitude = finalLongitude;
                     packageToUpdate.Latitude = finalLatitude;
                     packageToUpdate.Notes = viewModel.Notes;
@@ -487,8 +476,6 @@ namespace _10.Controllers
                         packageToUpdate.DeliveryDate = DateTime.UtcNow;
                     }
 
-                    // Create history entry if status changed, or location actually changed, or notes changed,
-                    // or if it's an "In Delivery" update (even if location is the same, it's a "ping").
                     if (statusChanged || finalLocationIsDifferent || notesChanged ||
                         (newStatus.Name == "In Delivery" && packageToUpdate.CurrentStatus?.Name == "In Delivery"))
                     {
@@ -499,8 +486,6 @@ namespace _10.Controllers
                             Timestamp = DateTime.UtcNow,
                             Longitude = finalLongitude,
                             Latitude = finalLatitude
-                            // Note: PackageHistory does not store courier notes directly by default.
-                            // If you want history-specific notes, you'd add a Notes field to PackageHistory entity.
                         };
                         _context.PackageHistories.Add(packageHistoryEntry);
                         _logger.LogInformation("Package {PackageId}: PackageHistory entry created for status {StatusName}.", packageToUpdate.PackageId, newStatus.Name);
@@ -515,7 +500,7 @@ namespace _10.Controllers
                     TempData["SuccessMessage"] = $"Package {packageToUpdate.TrackingNumber} status successfully updated to '{newStatus.Description}'.";
                     return RedirectToAction(nameof(PackageDetails), new { id = packageToUpdate.PackageId });
                 }
-                catch (InvalidOperationException ex) // Catch issues from GetCurrentUserId/Role
+                catch (InvalidOperationException ex) 
                 {
                     await transaction.RollbackAsync();
                     _logger.LogError(ex, "Authorization error in UpdateStatus (POST) for package {PackageId}.", viewModel.PackageId);
@@ -534,15 +519,14 @@ namespace _10.Controllers
                     ModelState.AddModelError(string.Empty, "An unexpected error occurred while updating the package status.");
                 }
             }
-            else // ModelState is invalid
+            else
             {
                  _logger.LogWarning("UpdateStatus (POST) for package ID {PackageId} failed due to invalid model state. Errors: {Errors}",
                                    viewModel.PackageId,
                                    string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
             }
 
-            // If we reach here, something went wrong, or ModelState was initially invalid
-            await PopulateViewModelForError(viewModel); // Repopulate necessary data for the view
+            await PopulateViewModelForError(viewModel); 
             return View(viewModel);
         }
 

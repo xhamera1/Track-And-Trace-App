@@ -23,24 +23,21 @@ builder.Services.AddScoped<ICourierService, CourierService>();
 builder.Services.AddScoped<IPackageAuthorizationService, PackageAuthorizationService>();
 builder.Services.AddScoped<IPackageLocationService, PackageLocationService>();
 
-// Add HttpClient for geocoding service
 builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>();
 
-// Configure geocoding service options
 builder.Services.Configure<NominatimGeocodingOptions>(options =>
 {
     options.UserAgent = "PackageTrackingApp/1.0";
-    options.ContactEmail = "admin@packagetracking.com"; // Replace with your contact email
+    options.ContactEmail = "admin@packagetracking.com";
     options.TimeoutSeconds = 10;
     options.MaxResults = 1;
     options.Language = "en";
 });
 
-// Add session services
-builder.Services.AddDistributedMemoryCache(); // Required for session state
+builder.Services.AddDistributedMemoryCache(); 
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromHours(1); // Set session timeout to 1 hour
+    options.IdleTimeout = TimeSpan.FromHours(1);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
@@ -52,7 +49,6 @@ builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.C
         options.LoginPath = "/Auth/Login";
         options.LogoutPath = "/Auth/Logout";
         options.AccessDeniedPath = "/Home/Index";
-        // options.ExpireTimeSpan = TimeSpan.FromHours(1);
     });
 //
 
@@ -70,7 +66,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
-app.UseSession(); // Add session middleware
+app.UseSession();
 app.UseAuthentication();
 
 app.UseAuthorization();

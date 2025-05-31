@@ -1,17 +1,17 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Http; // Required for HttpContext.Session
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using _10.Data; // Your DbContext
-using _10.Models; // Your Models
-using _10.Attributes; // For [SessionAuthorize]
-using _10.Services; // For authorization service
+using _10.Data; 
+using _10.Models; 
+using _10.Attributes;
+using _10.Services; 
 
 namespace _10.Controllers
 {
-    [SessionAuthorize] // Apply session authorization to all actions in this controller
+    [SessionAuthorize] 
     public class PackageController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -55,16 +55,14 @@ namespace _10.Controllers
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                    // Find or create recipient user
                     var recipientUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.RecipientEmail);
                     if (recipientUser == null)
                     {
-                        // Create recipient with minimal required information
                         recipientUser = new User
                         {
                             Username = model.RecipientEmail,
                             Email = model.RecipientEmail,
-                            Password = PasswordHelper.HashPassword("TempPassword123!"), // Temporary password
+                            Password = PasswordHelper.HashPassword("TempPassword123!"),
                             Role = UserRole.User,
                             FirstName = model.RecipientFirstName,
                             LastName = model.RecipientLastName,
@@ -72,24 +70,21 @@ namespace _10.Controllers
                             ApiKey = ApiKeyGenerator.GenerateApiKey()
                         };
                         _context.Users.Add(recipientUser);
-                        await _context.SaveChangesAsync(); // Save to get UserId
+                        await _context.SaveChangesAsync(); 
                     }
 
-                    // Find or create origin address using a more robust approach
                     var originAddress = await FindOrCreateAddressAsync(
                         model.OriginStreet,
                         model.OriginCity,
                         model.OriginZipCode,
                         model.OriginCountry);
 
-                    // Find or create destination address using a more robust approach
                     var destinationAddress = await FindOrCreateAddressAsync(
                         model.DestinationStreet,
                         model.DestinationCity,
                         model.DestinationZipCode,
                         model.DestinationCountry);
 
-                    // Get initial status
                     var initialStatus = await _context.StatusDefinitions.FirstOrDefaultAsync(s => s.Name == "Sent");
                     if (initialStatus == null)
                     {
@@ -99,10 +94,8 @@ namespace _10.Controllers
                         return View(model);
                     }
 
-                    // Assign random courier
                     var assignedCourierId = await AssignRandomCourierAsync();
 
-                    // Create package
                     var package = new Package
                     {
                         TrackingNumber = GenerateTrackingNumber(),
@@ -118,13 +111,11 @@ namespace _10.Controllers
                         AssignedCourierId = assignedCourierId
                     };
                     _context.Packages.Add(package);
-                    await _context.SaveChangesAsync(); // Save to get PackageId
+                    await _context.SaveChangesAsync(); 
 
-                    // Load the package with addresses for geocoding
                     package.OriginAddress = originAddress;
                     package.DestinationAddress = destinationAddress;
 
-                    // Try to populate package coordinates using geocoding service
                     try
                     {
                         var coordinatesPopulated = await _packageLocationService.PopulatePackageCoordinatesAsync(package);
@@ -142,10 +133,8 @@ namespace _10.Controllers
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Error during geocoding for package {PackageId}. Package will be created without coordinates.", package.PackageId);
-                        // Continue package creation even if geocoding fails
                     }
 
-                    // Create initial package history entry
                     var packageHistory = new PackageHistory
                     {
                         PackageId = package.PackageId,
@@ -181,7 +170,6 @@ namespace _10.Controllers
 
         private string GenerateTrackingNumber()
         {
-            // Generate a more user-friendly tracking number
             var prefix = "TT"; // Track & Trace
             var timestamp = DateTime.UtcNow.ToString("yyyyMMdd");
             var random = new Random().Next(1000, 9999);
@@ -192,7 +180,6 @@ namespace _10.Controllers
         {
             try
             {
-                // Get all active couriers from the database
                 var couriers = await _context.Users
                     .Where(u => u.Role == UserRole.Courier)
                     .Select(u => u.UserId)
@@ -201,10 +188,9 @@ namespace _10.Controllers
                 if (couriers == null || !couriers.Any())
                 {
                     _logger.LogWarning("No couriers found in the database for package assignment.");
-                    return null; // No couriers available
+                    return null; 
                 }
 
-                // Randomly select a courier
                 var random = new Random();
                 var randomIndex = random.Next(couriers.Count);
                 var selectedCourierId = couriers[randomIndex];
@@ -215,7 +201,7 @@ namespace _10.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while assigning random courier to package.");
-                return null; // Return null if assignment fails
+                return null; 
             }
         }
 
@@ -233,7 +219,6 @@ namespace _10.Controllers
 
             if (string.IsNullOrEmpty(userIdString) || string.IsNullOrEmpty(userRoleString))
             {
-                // SessionAuthorize should handle this, but good for explicit control flow
                 return RedirectToAction("Login", "Auth");
             }
 
@@ -241,14 +226,14 @@ namespace _10.Controllers
             var userRole = Enum.Parse<UserRole>(userRoleString);
 
             var package = await _context.Packages
-                .Include(p => p.SenderUser).ThenInclude(su => su.Address) // Eager load sender's address
-                .Include(p => p.RecipientUser).ThenInclude(ru => ru.Address) // Eager load recipient's address
-                .Include(p => p.OriginAddress) // Eager load origin address for the package
-                .Include(p => p.DestinationAddress) // Eager load destination address for the package
+                .Include(p => p.SenderUser).ThenInclude(su => su.Address) 
+                .Include(p => p.RecipientUser).ThenInclude(ru => ru.Address)
+                .Include(p => p.OriginAddress)
+                .Include(p => p.DestinationAddress)
                 .Include(p => p.CurrentStatus)
                 .Include(p => p.History).ThenInclude(ph => ph.Status)
-                .Include(p => p.AssignedCourier) // Eager load assigned courier if any
-                .AsNoTracking() // Good for read-only scenarios
+                .Include(p => p.AssignedCourier)
+                .AsNoTracking() 
                 .FirstOrDefaultAsync(p => p.PackageId == id);
 
             if (package == null)
@@ -256,7 +241,6 @@ namespace _10.Controllers
                 return NotFound();
             }
 
-            // Use the authorization service to check access
             var authResult = _authorizationService.GetAuthorizationResult(package, userId, userRole);
             if (!authResult.IsAuthorized)
             {
@@ -289,7 +273,6 @@ namespace _10.Controllers
 
             try
             {
-                // Get packages where the current user is the recipient
                 var packages = await _context.Packages
                     .Include(p => p.SenderUser)
                     .Include(p => p.CurrentStatus)
@@ -328,7 +311,6 @@ namespace _10.Controllers
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Get the package and verify it belongs to the current user and has "In Delivery" status
                 var package = await _context.Packages
                     .Include(p => p.CurrentStatus)
                     .FirstOrDefaultAsync(p => p.PackageId == id && p.RecipientUserId == userId);
@@ -357,17 +339,14 @@ namespace _10.Controllers
                     return RedirectToAction(nameof(PickUp));
                 }
 
-                // Update package status to "Delivered" and set delivery date
                 package.StatusId = deliveredStatus.StatusId;
                 package.DeliveryDate = DateTime.UtcNow;
 
-                // Try to geocode the destination address for delivery location
                 decimal? deliveryLatitude = package.Latitude;
                 decimal? deliveryLongitude = package.Longitude;
 
                 try
                 {
-                    // Load destination address if not already loaded
                     if (package.DestinationAddress == null)
                     {
                         var destinationAddress = await _context.Addresses
@@ -387,7 +366,6 @@ namespace _10.Controllers
                             deliveryLatitude = geocodingResult.Latitude.Value;
                             deliveryLongitude = geocodingResult.Longitude.Value;
 
-                            // Update package with final delivery coordinates
                             package.Latitude = deliveryLatitude;
                             package.Longitude = deliveryLongitude;
 
@@ -404,10 +382,8 @@ namespace _10.Controllers
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error during destination geocoding for package {PackageId} delivery", package.PackageId);
-                    // Continue with delivery even if geocoding fails
                 }
 
-                // Create package history entry for the pickup
                 var packageHistory = new PackageHistory
                 {
                     PackageId = package.PackageId,
@@ -444,10 +420,6 @@ namespace _10.Controllers
             }
         }
 
-        /// <summary>
-        /// Finds an existing address or creates a new one if it doesn't exist.
-        /// Uses INSERT IGNORE to handle potential duplicate key violations gracefully.
-        /// </summary>
         private async Task<Address> FindOrCreateAddressAsync(string street, string city, string zipCode, string country)
         {
             // Normalize the input to handle potential whitespace issues and ensure non-null values
@@ -463,7 +435,6 @@ namespace _10.Controllers
                 throw new ArgumentException("All address fields (street, city, zip code, country) are required and cannot be empty.");
             }
 
-            // First, try to find an existing address
             var existingAddress = await _context.Addresses
                 .FirstOrDefaultAsync(a =>
                     a.Street == street &&
@@ -476,7 +447,6 @@ namespace _10.Controllers
                 return existingAddress;
             }
 
-            // If not found, try to create a new address with proper error handling
             var newAddress = new Address
             {
                 Street = street,
@@ -494,8 +464,6 @@ namespace _10.Controllers
             catch (DbUpdateException ex) when (ex.InnerException?.Message?.Contains("Duplicate entry") == true ||
                                              ex.InnerException?.Message?.Contains("uq_address") == true)
             {
-                // If we get a duplicate key violation, it means another thread/request created the same address
-                // Remove the address from tracking and try to find the existing one again
                 _context.Entry(newAddress).State = EntityState.Detached;
 
                 var concurrentlyCreatedAddress = await _context.Addresses
@@ -510,11 +478,9 @@ namespace _10.Controllers
                     return concurrentlyCreatedAddress;
                 }
 
-                // Log the error for debugging
                 _logger.LogError(ex, "Failed to handle duplicate address creation for: {Street}, {City}, {ZipCode}, {Country}",
                     street, city, zipCode, country);
 
-                // If we still can't find it, re-throw the original exception
                 throw;
             }
         }

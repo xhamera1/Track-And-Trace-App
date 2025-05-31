@@ -7,21 +7,12 @@ using _10.Models;
 
 namespace _10.Services
 {
-    /// <summary>
-    /// Service for handling package location operations including geocoding
-    /// </summary>
     public class PackageLocationService : IPackageLocationService
     {
         private readonly IGeocodingService _geocodingService;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<PackageLocationService> _logger;
 
-        /// <summary>
-        /// Initializes a new instance of the PackageLocationService
-        /// </summary>
-        /// <param name="geocodingService">Geocoding service for address resolution</param>
-        /// <param name="context">Database context</param>
-        /// <param name="logger">Logger for logging operations</param>
         public PackageLocationService(
             IGeocodingService geocodingService,
             ApplicationDbContext context,
@@ -32,9 +23,7 @@ namespace _10.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        /// <summary>
-        /// Populates coordinates for package addresses using geocoding
-        /// </summary>
+
         public async Task<bool> PopulatePackageCoordinatesAsync(Package package)
         {
             if (package == null)
@@ -46,8 +35,6 @@ namespace _10.Services
             try
             {
                 bool coordinatesUpdated = false;
-
-                // If package doesn't have coordinates yet, try to geocode from origin address
                 if (!package.Latitude.HasValue || !package.Longitude.HasValue)
                 {
                     var originResult = await GeocodePackageOriginAsync(package);
@@ -76,9 +63,6 @@ namespace _10.Services
             }
         }
 
-        /// <summary>
-        /// Geocodes an address and returns coordinates
-        /// </summary>
         public async Task<GeocodingResult> GeocodeAddressAsync(Address address)
         {
             if (address == null)
@@ -118,9 +102,7 @@ namespace _10.Services
             }
         }
 
-        /// <summary>
-        /// Updates package location with new coordinates
-        /// </summary>
+
         public async Task<bool> UpdatePackageLocationAsync(Package package, decimal latitude, decimal longitude, bool saveChanges = true)
         {
             if (package == null)
@@ -131,7 +113,6 @@ namespace _10.Services
 
             try
             {
-                // Validate coordinates
                 if (latitude < -90 || latitude > 90)
                 {
                     _logger.LogWarning("Invalid latitude value {Latitude} for package {PackageId}", latitude, package.PackageId);
@@ -168,9 +149,6 @@ namespace _10.Services
             }
         }
 
-        /// <summary>
-        /// Gets the current delivery location for a package based on its status
-        /// </summary>
         public (decimal? Latitude, decimal? Longitude) GetCurrentPackageLocation(Package package)
         {
             if (package == null)
@@ -181,29 +159,23 @@ namespace _10.Services
 
             try
             {
-                // If package has specific coordinates, use those
                 if (package.Latitude.HasValue && package.Longitude.HasValue)
                 {
                     return (package.Latitude.Value, package.Longitude.Value);
                 }
 
-                // If no specific coordinates, try to get location based on status
                 var currentStatus = package.CurrentStatus?.Name;
 
                 switch (currentStatus)
                 {
                     case "Sent":
                     case "Processing":
-                        // Package is at origin location
                         return GetAddressCoordinates(package.OriginAddress);
 
                     case "Delivered":
-                        // Package is at destination location
                         return GetAddressCoordinates(package.DestinationAddress);
 
                     case "In Delivery":
-                        // Package is somewhere between origin and destination
-                        // Could implement route calculation here
                         return (package.Latitude, package.Longitude);
 
                     default:
@@ -219,12 +191,8 @@ namespace _10.Services
             }
         }
 
-        /// <summary>
-        /// Geocodes the origin address of a package
-        /// </summary>`
         private async Task<GeocodingResult> GeocodePackageOriginAsync(Package package)
         {
-            // Load origin address if not already loaded
             if (package.OriginAddress == null && package.OriginAddressId > 0)
             {
                 package.OriginAddress = await _context.Addresses
@@ -239,9 +207,6 @@ namespace _10.Services
             return await GeocodeAddressAsync(package.OriginAddress);
         }
 
-        /// <summary>
-        /// Gets coordinates for an address, attempting geocoding if needed
-        /// </summary>
         private (decimal? Latitude, decimal? Longitude) GetAddressCoordinates(Address? address)
         {
             if (address == null)
@@ -249,10 +214,7 @@ namespace _10.Services
                 return (null, null);
             }
 
-            // If address already has coordinates (future enhancement)
-            // you could store coordinates in the Address model and return them here
 
-            // For now, return null to indicate coordinates need to be geocoded
             return (null, null);
         }
     }

@@ -26,7 +26,7 @@ public class HomeController : Controller
         var userIdString = HttpContext.Session.GetString("UserId");
         if (string.IsNullOrEmpty(userIdString))
         {
-            return View(); // Or redirect to login
+            return View(); 
         }
 
         var userId = int.Parse(userIdString);
@@ -35,13 +35,13 @@ public class HomeController : Controller
         if (user != null && user.Role == UserRole.User)
         {
             var sentPackages = await _context.Packages
-                .Include(p => p.RecipientUser) // Eager load RecipientUser
-                .Include(p => p.CurrentStatus)   // Eager load CurrentStatus
+                .Include(p => p.RecipientUser) 
+                .Include(p => p.CurrentStatus)  
                 .Where(p => p.SenderUserId == userId)
                 .ToListAsync();
             var receivedPackages = await _context.Packages
-                .Include(p => p.SenderUser)   // Eager load SenderUser
-                .Include(p => p.CurrentStatus) // Eager load CurrentStatus
+                .Include(p => p.SenderUser)   
+                .Include(p => p.CurrentStatus)
                 .Where(p => p.RecipientUserId == userId)
                 .ToListAsync();
 

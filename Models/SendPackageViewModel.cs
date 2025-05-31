@@ -5,7 +5,6 @@ namespace _10.Models
 {
     public class SendPackageViewModel
     {
-        // Recipient Information
         [Required(ErrorMessage = "Recipient email is required.")]
         [EmailAddress(ErrorMessage = "Invalid email format.")]
         [Display(Name = "Recipient Email")]
@@ -17,7 +16,6 @@ namespace _10.Models
         [Display(Name = "Recipient Last Name (Optional)")]
         public string? RecipientLastName { get; set; }
 
-        // Origin Address
         [Required(ErrorMessage = "Origin street is required.")]
         [StringLength(255)]
         [Display(Name = "Origin Street")]
@@ -38,7 +36,6 @@ namespace _10.Models
         [Display(Name = "Origin Country")]
         public string OriginCountry { get; set; } = string.Empty;
 
-        // Destination Address
         [Required(ErrorMessage = "Destination street is required.")]
         [StringLength(255)]
         [Display(Name = "Destination Street")]
@@ -59,7 +56,6 @@ namespace _10.Models
         [Display(Name = "Destination Country")]
         public string DestinationCountry { get; set; } = string.Empty;
 
-        // Package Details
         [Required(ErrorMessage = "Package size is required.")]
         [Display(Name = "Package Size")]
         public PackageSize PackageSize { get; set; }

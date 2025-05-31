@@ -18,7 +18,6 @@ namespace _10.Models
         [Display(Name = "Birthday")]
         public DateTime Birthday { get; set; }
 
-        // Address details
         [Required]
         public string Street { get; set; }
 

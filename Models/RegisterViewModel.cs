@@ -16,7 +16,7 @@ namespace _10.Models
 
         [Required]
         [DataType(DataType.Password)]
-        [StringLength(255, MinimumLength = 6)] // Assuming a minimum password length
+        [StringLength(255, MinimumLength = 6)] 
         public string Password { get; set; }
 
         [DataType(DataType.Password)]

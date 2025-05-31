@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace _10.Models
 {
-    [Table("PackageHistory")] // Add this line to specify the table name
+    [Table("PackageHistory")] 
     public class PackageHistory
     {
         [Key]

@@ -11,51 +11,22 @@ using Microsoft.Extensions.Options;
 
 namespace _10.Services
 {
-    /// <summary>
-    /// Configuration options for the Nominatim geocoding service
-    /// </summary>
     public class NominatimGeocodingOptions
     {
-        /// <summary>
-        /// Base URL for the Nominatim API (default: OpenStreetMap Nominatim)
-        /// </summary>
         public string BaseUrl { get; set; } = "https://nominatim.openstreetmap.org";
-
-        /// <summary>
-        /// User agent string for API requests (required by Nominatim usage policy)
-        /// </summary>
         public string UserAgent { get; set; } = "PackageTrackingApp/1.0";
 
-        /// <summary>
-        /// Email contact for API usage (recommended by Nominatim usage policy)
-        /// </summary>
         public string ContactEmail { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Timeout for HTTP requests in seconds
-        /// </summary>
         public int TimeoutSeconds { get; set; } = 10;
 
-        /// <summary>
-        /// Whether to use HTTPS for requests
-        /// </summary>
         public bool UseHttps { get; set; } = true;
 
-        /// <summary>
-        /// Maximum number of results to request from Nominatim
-        /// </summary>
         public int MaxResults { get; set; } = 1;
 
-        /// <summary>
-        /// Language preference for results (ISO 639-1 language code)
-        /// </summary>
         public string Language { get; set; } = "en";
     }
 
-    /// <summary>
-    /// Geocoding service implementation using the Nominatim API
-    /// Follows OpenStreetMap Nominatim usage guidelines and best practices
-    /// </summary>
     public class NominatimGeocodingService : IGeocodingService, IDisposable
     {
         private readonly HttpClient _httpClient;
@@ -64,12 +35,6 @@ namespace _10.Services
         private readonly JsonSerializerOptions _jsonOptions;
         private bool _disposed = false;
 
-        /// <summary>
-        /// Initializes a new instance of the NominatimGeocodingService
-        /// </summary>
-        /// <param name="httpClient">HTTP client for making API requests</param>
-        /// <param name="logger">Logger for logging operations</param>
-        /// <param name="options">Configuration options for the service</param>
         public NominatimGeocodingService(
             HttpClient httpClient,
             ILogger<NominatimGeocodingService> logger,
@@ -89,21 +54,16 @@ namespace _10.Services
             ConfigureHttpClient();
         }
 
-        /// <summary>
-        /// Geocodes an address to latitude and longitude coordinates
-        /// </summary>
         public async Task<GeocodingResult> GeocodeAddressAsync(string street, string city, string zipCode, string country)
         {
             try
             {
-                // Validate input parameters
                 if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
                 {
                     _logger.LogWarning("Geocoding failed: Both street and city cannot be empty");
                     return GeocodingResult.Failure("Either street or city must be provided for geocoding");
                 }
 
-                // Build the query string
                 var queryComponents = new List<string>();
 
                 if (!string.IsNullOrWhiteSpace(street))
@@ -122,10 +82,8 @@ namespace _10.Services
 
                 _logger.LogInformation("Attempting to geocode address: {Query}", query);
 
-                // Build the request URL
                 var requestUrl = BuildGeocodeUrl(query);
 
-                // Make the API request
                 var response = await _httpClient.GetAsync(requestUrl);
                 response.EnsureSuccessStatusCode();
 
@@ -136,8 +94,6 @@ namespace _10.Services
                     _logger.LogWarning("Received empty response from Nominatim API for query: {Query}", query);
                     return GeocodingResult.Failure("Received empty response from geocoding service");
                 }
-
-                // Parse the JSON response
                 var results = JsonSerializer.Deserialize<NominatimGeocodeResponse[]>(responseContent, _jsonOptions);
 
                 if (results == null || results.Length == 0)
@@ -146,7 +102,6 @@ namespace _10.Services
                     return GeocodingResult.Failure("No location found for the provided address");
                 }
 
-                // Get the best result (first one, as Nominatim returns them sorted by relevance)
                 var bestResult = results[0];
 
                 if (!decimal.TryParse(bestResult.Lat, NumberStyles.Float, CultureInfo.InvariantCulture, out var latitude) ||
@@ -192,14 +147,10 @@ namespace _10.Services
             }
         }
 
-        /// <summary>
-        /// Reverse geocodes latitude and longitude coordinates to an address
-        /// </summary>
         public async Task<ReverseGeocodingResult> ReverseGeocodeAsync(decimal latitude, decimal longitude)
         {
             try
             {
-                // Validate coordinates
                 if (latitude < -90 || latitude > 90)
                 {
                     _logger.LogWarning("Invalid latitude value: {Latitude}", latitude);
@@ -213,11 +164,8 @@ namespace _10.Services
                 }
 
                 _logger.LogInformation("Attempting to reverse geocode coordinates: {Lat}, {Lon}", latitude, longitude);
-
-                // Build the request URL
                 var requestUrl = BuildReverseGeocodeUrl(latitude, longitude);
 
-                // Make the API request
                 var response = await _httpClient.GetAsync(requestUrl);
                 response.EnsureSuccessStatusCode();
 
@@ -230,7 +178,6 @@ namespace _10.Services
                     return ReverseGeocodingResult.Failure("Received empty response from reverse geocoding service");
                 }
 
-                // Parse the JSON response
                 var result = JsonSerializer.Deserialize<NominatimReverseGeocodeResponse>(responseContent, _jsonOptions);
 
                 if (result == null)
@@ -239,7 +186,6 @@ namespace _10.Services
                     return ReverseGeocodingResult.Failure("No address found for the provided coordinates");
                 }
 
-                // Extract address components
                 var address = result.Address;
                 var street = ExtractStreetAddress(address);
                 var city = ExtractCity(address);
@@ -282,28 +228,19 @@ namespace _10.Services
             }
         }
 
-        /// <summary>
-        /// Configures the HTTP client with appropriate headers and settings
-        /// </summary>
         private void ConfigureHttpClient()
         {
-            // Set user agent (required by Nominatim usage policy)
             var userAgent = !string.IsNullOrWhiteSpace(_options.ContactEmail)
                 ? $"{_options.UserAgent} ({_options.ContactEmail})"
                 : _options.UserAgent;
 
             _httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
-
-            // Set timeout
             _httpClient.Timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds);
 
             _logger.LogDebug("Configured HTTP client with User-Agent: {UserAgent}, Timeout: {Timeout}s",
                 userAgent, _options.TimeoutSeconds);
         }
 
-        /// <summary>
-        /// Builds the URL for geocoding requests
-        /// </summary>
         private string BuildGeocodeUrl(string query)
         {
             var baseUrl = _options.UseHttps ? _options.BaseUrl.Replace("http://", "https://") : _options.BaseUrl;
@@ -313,9 +250,6 @@ namespace _10.Services
             return $"{baseUrl}/search?q={encodedQuery}&format=json&limit={_options.MaxResults}&addressdetails=1&accept-language={_options.Language}";
         }
 
-        /// <summary>
-        /// Builds the URL for reverse geocoding requests
-        /// </summary>
         private string BuildReverseGeocodeUrl(decimal latitude, decimal longitude)
         {
             var baseUrl = _options.UseHttps ? _options.BaseUrl.Replace("http://", "https://") : _options.BaseUrl;
@@ -326,9 +260,6 @@ namespace _10.Services
             return $"{baseUrl}/reverse?lat={latStr}&lon={lonStr}&format=json&addressdetails=1&accept-language={_options.Language}";
         }
 
-        /// <summary>
-        /// Extracts street address from Nominatim address components
-        /// </summary>
         private static string? ExtractStreetAddress(NominatimAddress? address)
         {
             if (address == null) return null;
@@ -340,10 +271,6 @@ namespace _10.Services
                    address.Footway ??
                    address.Path;
         }
-
-        /// <summary>
-        /// Extracts city name from Nominatim address components
-        /// </summary>
         private static string? ExtractCity(NominatimAddress? address)
         {
             if (address == null) return null;
@@ -355,19 +282,12 @@ namespace _10.Services
                    address.Municipality ??
                    address.County;
         }
-
-        /// <summary>
-        /// Disposes the HTTP client and other resources
-        /// </summary>
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
-        /// <summary>
-        /// Protected dispose method
-        /// </summary>
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed && disposing)
@@ -380,9 +300,6 @@ namespace _10.Services
 
     #region Nominatim API Response Models
 
-    /// <summary>
-    /// Response model for Nominatim geocoding API
-    /// </summary>
     internal class NominatimGeocodeResponse
     {
         [JsonPropertyName("lat")]
@@ -401,9 +318,7 @@ namespace _10.Services
         public NominatimAddress? Address { get; set; }
     }
 
-    /// <summary>
-    /// Response model for Nominatim reverse geocoding API
-    /// </summary>
+
     internal class NominatimReverseGeocodeResponse
     {
         [JsonPropertyName("display_name")]
@@ -413,9 +328,6 @@ namespace _10.Services
         public NominatimAddress? Address { get; set; }
     }
 
-    /// <summary>
-    /// Address components model for Nominatim API responses
-    /// </summary>
     internal class NominatimAddress
     {
         [JsonPropertyName("house_number")]

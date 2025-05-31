@@ -7,7 +7,7 @@ namespace _10.Attributes
     {
         public string[]? RequiredRoles { get; set; }
 
-        public SessionAuthorizeAttribute() { } // Default constructor
+        public SessionAuthorizeAttribute() { } 
 
         public SessionAuthorizeAttribute(params string[] roles)
         {
@@ -20,19 +20,16 @@ namespace _10.Attributes
 
             if (string.IsNullOrEmpty(userId))
             {
-                // User is not logged in, redirect to login
                 context.Result = new RedirectToActionResult("Login", "Auth", null);
                 return;
             }
 
-            // Check if specific roles are required
             if (RequiredRoles != null && RequiredRoles.Length > 0)
             {
                 var userRole = context.HttpContext.Session.GetString("UserRole");
 
                 if (string.IsNullOrEmpty(userRole) || !RequiredRoles.Contains(userRole, StringComparer.OrdinalIgnoreCase))
                 {
-                    // User doesn't have required role, redirect to access denied or home
                     context.Result = new RedirectToActionResult("Index", "Home", null);
                     return;
                 }

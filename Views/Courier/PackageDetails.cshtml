@@ -1,7 +1,7 @@
 @model _10.Models.Package
 @using Microsoft.AspNetCore.Http
 @using System.Globalization
-@using System.Text.Json; // Required for Json.Serialize
+@using System.Text.Json; 
 
 @{
     ViewData["Title"] = Model != null ? $"Package Details: {Model.TrackingNumber}" : "Package Details";
@@ -9,7 +9,6 @@
     var currentUserIdStr = ViewContext.HttpContext.Session.GetString("UserId");
     int.TryParse(currentUserIdStr, out int currentUserId);
 
-    // Prepare data for the map
     var historyPointsForMap = Model?.History
         .Where(h => h.Latitude.HasValue && h.Longitude.HasValue)
         .OrderBy(h => h.Timestamp)
@@ -28,8 +27,7 @@
             lat = Model.Latitude.Value,
             lng = Model.Longitude.Value,
             status = Model.CurrentStatus?.Description ?? "Current Location"
-            // Consider adding a timestamp for current location if available from Model
-            // timestamp = Model.LastLocationUpdateTime?.ToString("yyyy-MM-dd HH:mm")
+
         };
     }
 }

@@ -3,9 +3,6 @@ using Microsoft.Extensions.Logging;
 
 namespace _10.Services
 {
-    /// <summary>
-    /// Service for handling package access authorization logic
-    /// </summary>
     public class PackageAuthorizationService : IPackageAuthorizationService
     {
         private readonly ILogger<PackageAuthorizationService> _logger;
@@ -15,9 +12,6 @@ namespace _10.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        /// <summary>
-        /// Checks if a user is authorized to view package details
-        /// </summary>
         public bool IsAuthorizedToViewPackage(Package package, int userId, UserRole userRole)
         {
             if (package == null)
@@ -30,9 +24,6 @@ namespace _10.Services
             return result.IsAuthorized;
         }
 
-        /// <summary>
-        /// Checks if a user is authorized to modify package details (more restrictive)
-        /// </summary>
         public bool IsAuthorizedToModifyPackage(Package package, int userId, UserRole userRole)
         {
             if (package == null)
@@ -41,16 +32,12 @@ namespace _10.Services
                 return false;
             }
 
-            // Only admin and assigned courier can modify packages
             var result = GetAuthorizationResult(package, userId, userRole);
             return result.IsAuthorized &&
                    (result.AccessType == PackageAccessType.Admin ||
                     result.AccessType == PackageAccessType.AssignedCourier);
         }
 
-        /// <summary>
-        /// Gets a detailed authorization result with reasoning
-        /// </summary>
         public PackageAuthorizationResult GetAuthorizationResult(Package package, int userId, UserRole userRole)
         {
             if (package == null)
@@ -65,7 +52,6 @@ namespace _10.Services
 
             try
             {
-                // Admin has access to all packages
                 if (userRole == UserRole.Admin)
                 {
                     _logger.LogDebug("Admin user {UserId} accessing package {PackageId}", userId, package.PackageId);
@@ -77,7 +63,6 @@ namespace _10.Services
                     };
                 }
 
-                // Sender has access to packages they sent
                 if (package.SenderUserId == userId)
                 {
                     _logger.LogDebug("Sender user {UserId} accessing their package {PackageId}", userId, package.PackageId);
@@ -89,7 +74,6 @@ namespace _10.Services
                     };
                 }
 
-                // Recipient has access to packages sent to them
                 if (package.RecipientUserId == userId)
                 {
                     _logger.LogDebug("Recipient user {UserId} accessing their package {PackageId}", userId, package.PackageId);
@@ -101,7 +85,6 @@ namespace _10.Services
                     };
                 }
 
-                // Assigned courier has access to packages assigned to them
                 if (userRole == UserRole.Courier && package.AssignedCourierId == userId)
                 {
                     _logger.LogDebug("Assigned courier {UserId} accessing package {PackageId}", userId, package.PackageId);
@@ -113,7 +96,6 @@ namespace _10.Services
                     };
                 }
 
-                // No authorization found
                 _logger.LogWarning("User {UserId} with role {UserRole} attempted unauthorized access to package {PackageId}. " +
                                   "Sender: {SenderId}, Recipient: {RecipientId}, Assigned Courier: {CourierId}",
                                   userId, userRole, package.PackageId,
@@ -139,9 +121,6 @@ namespace _10.Services
             }
         }
 
-        /// <summary>
-        /// Gets user-friendly unauthorized reason message
-        /// </summary>
         private static string GetUnauthorizedReason(UserRole userRole)
         {
             return userRole switch

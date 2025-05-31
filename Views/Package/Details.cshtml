@@ -1,237 +1,447 @@
 @model _10.Models.Package
+@using Microsoft.AspNetCore.Http
+@using System.Globalization
+@using System.Text.Json; 
 
 @{
-    ViewData["Title"] = "Package Details";
+    ViewData["Title"] = Model != null ? $"Package Details: {Model.TrackingNumber}" : "Package Details";
+    var currentUserRole = ViewContext.HttpContext.Session.GetString("UserRole"); 
+
+    var historyPointsForMap = Model?.History
+        .Where(h => h.Latitude.HasValue && h.Longitude.HasValue)
+        .OrderBy(h => h.Timestamp) 
+        .Select(h => new {
+            lat = h.Latitude.Value,
+            lng = h.Longitude.Value,
+            timestamp = h.Timestamp.ToString("yyyy-MM-dd HH:mm"),
+            status = h.Status?.Description ?? "N/A"
+        })
+        .ToList();
+
+    object? currentLocationForMap = null;
+    if (Model?.Latitude.HasValue == true && Model?.Longitude.HasValue == true)
+    {
+        currentLocationForMap = new {
+            lat = Model.Latitude.Value,
+            lng = Model.Longitude.Value,
+            status = Model.CurrentStatus?.Description ?? "Current Location"
+        };
+    }
 }
 
-<div class="page-header">
-    <h1><i class="fas fa-box me-3"></i>Package Details</h1>
-    <p>Track your package and view detailed information</p>
+@* Add Leaflet CSS in the head section of _Layout.cshtml or here if only for this page *@
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin="" />
+<style>
+    #packageMapUserDetails { /* Unique ID for this map instance */
+        height: 450px;
+        width: 100%;
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--light-gray);
+        margin-top: var(--spacing-lg);
+        margin-bottom: var(--spacing-lg);
+    }
+    .leaflet-popup-content-wrapper {
+        border-radius: var(--border-radius-md);
+    }
+    .leaflet-popup-content {
+        font-family: var(--font-family-base);
+    }
+    .leaflet-popup-content strong {
+        color: var(--primary-yellow-dark);
+    }
+    /* Ensure dl, dt, dd styles are consistent if overridden by Bootstrap defaults */
+    .details-dl dt {
+        font-weight: var(--font-weight-medium);
+        color: var(--medium-gray);
+    }
+    .details-dl dd {
+        font-weight: var(--font-weight-semibold);
+        color: var(--dark-gray);
+    }
+    .details-dl .text-yellow { /* Ensure our theme color is applied */
+        color: var(--primary-yellow-dark) !important; 
+    }
+</style>
+
+<div class="page-header mb-4">
+    <h1><i class="fas fa-box-open me-3"></i>@ViewData["Title"]</h1>
+    <p class="lead">Track your package and view detailed information, including its route.</p>
 </div>
 
-<div class="row">
-    <div class="col-lg-12">
-        <div class="card shadow-custom">
-            <div class="card-header">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Package Information</h5>
-                    <span class="h4 mb-0">
-                        <span class="status-badge badge-info">@Html.DisplayFor(model => model.CurrentStatus.Name)</span>
-                    </span>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6 class="text-primary mb-3"><i class="fas fa-clipboard-list me-2"></i>General Information</h6>
-                        <dl class="row">
-                            <dt class="col-sm-5">Tracking Number:</dt>
-                            <dd class="col-sm-7">
-                                <span class="fw-bold text-primary">@Html.DisplayFor(model => model.TrackingNumber)</span>
-                            </dd>
-                            <dt class="col-sm-5">Package Size:</dt>
-                            <dd class="col-sm-7">@Html.DisplayFor(model => model.PackageSize)</dd>
-                            @if (Model.WeightInKg.HasValue)
-                            {
-                                <dt class="col-sm-5">Weight:</dt>
-                                <dd class="col-sm-7">@Html.DisplayFor(model => model.WeightInKg) kg</dd>
-                            }
-                            <dt class="col-sm-5">Submission Date:</dt>
-                            <dd class="col-sm-7">@Model.SubmissionDate.ToString("yyyy-MM-dd HH:mm")</dd>
-                            @if (Model.DeliveryDate.HasValue)
-                            {
-                                <dt class="col-sm-5">Delivery Date:</dt>
-                                <dd class="col-sm-7">
-                                    <span class="text-success fw-medium">@Model.DeliveryDate.Value.ToString("yyyy-MM-dd HH:mm")</span>
-                                </dd>
-                            }
-                        </dl>
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="text-primary mb-3"><i class="fas fa-users me-2"></i>People Involved</h6>
-                        <dl class="row">
-                            <dt class="col-sm-4">Sender:</dt>
-                            <dd class="col-sm-8">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-user-circle me-2 text-muted"></i>
-                                    <div>
-                                        <div class="fw-medium">@Html.DisplayFor(model => model.SenderUser.FirstName) @Html.DisplayFor(model => model.SenderUser.LastName)</div>
-                                        <small class="text-muted">@Html.DisplayFor(model => model.SenderUser.Email)</small>
-                                    </div>
-                                </div>
-                            </dd>
-                            <dt class="col-sm-4">Recipient:</dt>
-                            <dd class="col-sm-8">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-user-check me-2 text-muted"></i>
-                                    <div>
-                                        <div class="fw-medium">@Html.DisplayFor(model => model.RecipientUser.FirstName) @Html.DisplayFor(model => model.RecipientUser.LastName)</div>
-                                        <small class="text-muted">@Html.DisplayFor(model => model.RecipientUser.Email)</small>
-                                    </div>
-                                </div>
-                            </dd>
-                            @if (Model.AssignedCourier != null)
-                            {
-                                <dt class="col-sm-4">Courier:</dt>
-                                <dd class="col-sm-8">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-truck me-2 text-muted"></i>
-                                        <div>
-                                            <div class="fw-medium">@Html.DisplayFor(model => model.AssignedCourier.FirstName) @Html.DisplayFor(model => model.AssignedCourier.LastName)</div>
-                                            <small class="text-muted">@Html.DisplayFor(model => model.AssignedCourier.Email)</small>
-                                        </div>
-                                    </div>
-                                </dd>
-                            }
-                        </dl>
-                    </div>
-                </div>
-
-                @if (!string.IsNullOrEmpty(Model.Notes))
-                {
-                    <hr />
-                    <h6 class="text-primary mb-3"><i class="fas fa-sticky-note me-2"></i>Additional Notes</h6>
-                    <div class="alert alert-light border">
-                        @Html.DisplayFor(model => model.Notes)
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Address Information -->
-<div class="row mt-4">
-    <div class="col-md-6">
-        <div class="card shadow-custom">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Origin Address</h5>
-            </div>
-            <div class="card-body">
-                <address class="mb-0">
-                    <i class="fas fa-building me-2 text-muted"></i>
-                    @Html.DisplayFor(model => model.OriginAddress.Street)<br>
-                    <i class="fas fa-city me-2 text-muted"></i>
-                    @Html.DisplayFor(model => model.OriginAddress.City), @Html.DisplayFor(model => model.OriginAddress.ZipCode)<br>
-                    <i class="fas fa-globe me-2 text-muted"></i>
-                    @Html.DisplayFor(model => model.OriginAddress.Country)
-                </address>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card shadow-custom">
-            <div class="card-header bg-warning text-dark">
-                <h5 class="mb-0"><i class="fas fa-flag-checkered me-2"></i>Destination Address</h5>
-            </div>
-            <div class="card-body">
-                <address class="mb-0">
-                    <i class="fas fa-building me-2 text-muted"></i>
-                    @Html.DisplayFor(model => model.DestinationAddress.Street)<br>
-                    <i class="fas fa-city me-2 text-muted"></i>
-                    @Html.DisplayFor(model => model.DestinationAddress.City), @Html.DisplayFor(model => model.DestinationAddress.ZipCode)<br>
-                    <i class="fas fa-globe me-2 text-muted"></i>
-                    @Html.DisplayFor(model => model.DestinationAddress.Country)
-                </address>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Package History -->
-@if (Model.History != null && Model.History.Any())
+@if (TempData["SuccessMessage"] != null)
 {
-    <div class="row mt-4">
-        <div class="col-lg-12">
-            <div class="card shadow-custom">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Package History</h5>
-                </div>
-                <div class="card-body">
-                    <div class="timeline">
-                        @foreach (var historyEntry in Model.History.OrderByDescending(h => h.Timestamp))
-                        {
-                            <div class="timeline-item d-flex align-items-center mb-3 p-3 border-start border-3 border-primary bg-light rounded">
-                                <div class="timeline-content flex-grow-1">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-3">
-                                            <small class="text-muted fw-medium">
-                                                <i class="fas fa-clock me-1"></i>
-                                                @historyEntry.Timestamp.ToString("yyyy-MM-dd HH:mm")
-                                            </small>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <span class="status-badge badge-info">@historyEntry.Status.Name</span>
-                                        </div>
-                                        <div class="col-md-5">
-                                            @if (historyEntry.Latitude.HasValue && historyEntry.Longitude.HasValue)
-                                            {
-                                                <small class="text-muted">
-                                                    <i class="fas fa-map-pin me-1"></i>
-                                                    @historyEntry.Latitude.Value.ToString("F6"), @historyEntry.Longitude.Value.ToString("F6")
-                                                </small>
-                                            }
-                                            else
-                                            {
-                                                <small class="text-muted">
-                                                    <i class="fas fa-map-pin me-1"></i>
-                                                    Location: N/A
-                                                </small>
-                                            }
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+        <i class="fas fa-check-circle me-2"></i>
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (Model == null)
+{
+    <div class="alert alert-warning shadow-sm">
+        <i class="fas fa-info-circle me-2"></i>
+        Could not load package details. The package may not exist or you may not have permission to view it.
+    </div>
+    <a href="@Url.Action("Index", "Home")" class="btn btn-outline-secondary btn-lg mt-3">
+        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+    </a>
 }
 else
 {
-    <div class="row mt-4">
-        <div class="col-lg-12">
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>No history available for this package.
+    <div class="row g-4">
+        <div class="col-lg-7 col-xl-8">
+            <div class="card shadow-custom h-100">
+                <div class="card-header bg-yellow-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-dark-gray"><i class="fas fa-cube me-2 text-yellow"></i>Package Overview</h5>
+                    <span class="badge @GetStatusBadgeClass(Model.CurrentStatus?.Name) fs-6">@Model.CurrentStatus?.Name</span>
+                </div>
+                <div class="card-body p-4">
+                    <dl class="row details-dl mb-0">
+                        <dt class="col-sm-5 col-md-4"><i class="fas fa-barcode me-2"></i>Tracking Number:</dt>
+                        <dd class="col-sm-7 col-md-8 fw-bold text-yellow h5">@Html.DisplayFor(model => model.TrackingNumber)</dd>
+
+                        <dt class="col-sm-5 col-md-4"><i class="fas fa-info-circle me-2"></i>Status Description:</dt>
+                        <dd class="col-sm-7 col-md-8">@(Model.CurrentStatus?.Description ?? "N/A")</dd>
+
+                        <dt class="col-sm-5 col-md-4"><i class="fas fa-calendar-alt me-2"></i>Submission Date:</dt>
+                        <dd class="col-sm-7 col-md-8">@Model.SubmissionDate.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                        <dt class="col-sm-5 col-md-4"><i class="fas fa-calendar-check me-2"></i>Delivery Date:</dt>
+                        <dd class="col-sm-7 col-md-8">@(Model.DeliveryDate?.ToString("yyyy-MM-dd HH:mm") ?? "Not yet delivered")</dd>
+
+                        <dt class="col-sm-5 col-md-4"><i class="fas fa-box me-2"></i>Size:</dt>
+                        <dd class="col-sm-7 col-md-8">@Html.DisplayFor(model => model.PackageSize)</dd>
+
+                        @if (Model.WeightInKg.HasValue)
+                        {
+                            <dt class="col-sm-5 col-md-4"><i class="fas fa-weight-hanging me-2"></i>Weight:</dt>
+                            <dd class="col-sm-7 col-md-8">@Model.WeightInKg.Value.ToString("F2") kg</dd>
+                        }
+                        
+                        <dt class="col-sm-5 col-md-4"><i class="fas fa-map-marker-alt me-2"></i>Current Coordinates:</dt>
+                        <dd class="col-sm-7 col-md-8">
+                            @if (Model.Latitude.HasValue && Model.Longitude.HasValue)
+                            {
+                                @($"Lat: {Model.Latitude.Value.ToString("F5", CultureInfo.InvariantCulture)}, Lon: {Model.Longitude.Value.ToString("F5", CultureInfo.InvariantCulture)}")
+                            }
+                            else
+                            {
+                                @("N/A")
+                            }
+                        </dd>
+
+                        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                        {
+                            <dt class="col-sm-5 col-md-4 mt-2"><i class="fas fa-sticky-note me-2"></i>Notes:</dt>
+                            <dd class="col-sm-7 col-md-8 mt-2">
+                                <div class="alert alert-light border-yellow p-2 small shadow-sm">
+                                    @Html.Raw(Model.Notes.Replace("\n", "<br />"))
+                                </div>
+                            </dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5 col-xl-4">
+            <div class="card shadow-custom h-100">
+                <div class="card-header bg-yellow-light">
+                    <h5 class="mb-0 text-dark-gray"><i class="fas fa-route me-2 text-yellow"></i>Shipment Details</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-3 pb-3 border-bottom border-light-gray">
+                        <strong class="text-muted d-block mb-1"><i class="fas fa-user-tag me-2"></i>Sender</strong>
+                        <div class="ps-3">
+                            @if(Model.SenderUser != null)
+                            {
+                                <div>@(Model.SenderUser.FirstName ?? "") @(Model.SenderUser.LastName ?? "") (@Model.SenderUser.Username)</div>
+                                <small class="text-muted">@Model.SenderUser.Email</small>
+                            } else { <span class="text-muted">N/A</span> }
+                        </div>
+                    </div>
+                    <div class="mb-3 pb-3 border-bottom border-light-gray">
+                        <strong class="text-muted d-block mb-1"><i class="fas fa-user-check me-2"></i>Recipient</strong>
+                         <div class="ps-3">
+                            @if(Model.RecipientUser != null)
+                            {
+                                <div>@(Model.RecipientUser.FirstName ?? "") @(Model.RecipientUser.LastName ?? "") (@Model.RecipientUser.Username)</div>
+                                <small class="text-muted">@Model.RecipientUser.Email</small>
+                            } else { <span class="text-muted">N/A</span> }
+                        </div>
+                    </div>
+                     @if (Model.AssignedCourier != null && (currentUserRole == "Admin" || currentUserRole == "Courier")) // Show courier only to Admin/Courier
+                    {
+                        <div class="mb-3 pb-3 border-bottom border-light-gray">
+                            <strong class="text-muted d-block mb-1"><i class="fas fa-truck me-2"></i>Assigned Courier</strong>
+                            <div class="ps-3">
+                                <div>@(Model.AssignedCourier.FirstName ?? "") @(Model.AssignedCourier.LastName ?? "") (@Model.AssignedCourier.Username)</div>
+                                <small class="text-muted">@Model.AssignedCourier.Email</small>
+                            </div>
+                        </div>
+                    }
+                     <div class="mb-3 pb-3 border-bottom border-light-gray">
+                        <strong class="text-success d-block mb-1"><i class="fas fa-map-marker-alt me-2"></i>Origin Address</strong>
+                        @if (Model.OriginAddress != null)
+                        {
+                            <address class="mb-0 ps-3">
+                                <strong>@Model.OriginAddress.Street</strong><br>
+                                @Model.OriginAddress.City, @Model.OriginAddress.ZipCode<br>
+                                @Model.OriginAddress.Country
+                            </address>
+                        } else { <span class="text-muted ps-3">N/A</span>}
+                    </div>
+                    <div>
+                        <strong class="text-warning d-block mb-1"><i class="fas fa-flag-checkered me-2"></i>Destination Address</strong>
+                        @if (Model.DestinationAddress != null)
+                        {
+                            <address class="mb-0 ps-3">
+                                <strong>@Model.DestinationAddress.Street</strong><br>
+                                @Model.DestinationAddress.City, @Model.DestinationAddress.ZipCode<br>
+                                @Model.DestinationAddress.Country
+                            </address>
+                        } else { <span class="text-muted ps-3">N/A</span>}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-}
 
-<!-- Action Buttons -->
-<div class="row mt-4">
-    <div class="col-lg-12">
-        <div class="d-flex justify-content-between">
-            <a asp-action="Index" asp-controller="Home" class="btn btn-outline-secondary btn-lg">
-                <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
-            </a>
-            @if (ViewContext.HttpContext.Session.GetString("UserRole") == "User")
+    <div class="card shadow-custom mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-map-marked-alt me-2"></i>Package Route</h5>
+        </div>
+        <div class="card-body p-3">
+             @if (historyPointsForMap.Any() || currentLocationForMap != null)
             {
-                <a asp-action="SendPackage" class="btn btn-primary btn-lg">
-                    <i class="fas fa-plus me-1"></i>Send New Package
-                </a>
+                <div id="packageMapUserDetails"></div>
+            }
+            else
+            {
+                 <div class="p-4 text-center text-muted">
+                     <i class="fas fa-map-marker-slash fa-2x mb-2"></i><br/>
+                    No location data available to display on the map for this package.
+                </div>
             }
         </div>
     </div>
-</div>
-</div>
 
-<style>
-    .timeline-item {
-        padding: 10px;
-        border-left: 3px solid #007bff;
-        margin-left: 20px;
-        background: #f8f9fa;
-        border-radius: 5px;
-    }
+    <div class="card shadow-custom mt-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-history me-2"></i>Package History Log</h5>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.History != null && Model.History.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover modern-table mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th><i class="fas fa-calendar-day me-1"></i>Date & Time</th>
+                                <th><i class="fas fa-info-circle me-1"></i>Status</th>
+                                <th><i class="fas fa-map-pin me-1"></i>Location (Lat, Lon)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var historyEntry in Model.History.OrderByDescending(h => h.Timestamp))
+                            {
+                                <tr class="@(historyEntry.Status?.Name?.ToLower().Replace(" ", "-"))">
+                                    <td>@historyEntry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(historyEntry.Status?.Name)">
+                                            @(historyEntry.Status?.Description ?? "N/A")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (historyEntry.Latitude.HasValue && historyEntry.Longitude.HasValue)
+                                        {
+                                            @($"Lat: {historyEntry.Latitude.Value.ToString("F5", CultureInfo.InvariantCulture)}, Lon: {historyEntry.Longitude.Value.ToString("F5", CultureInfo.InvariantCulture)}")
+                                            <a href="@($"https://www.google.com/maps?q={historyEntry.Latitude.Value.ToString(CultureInfo.InvariantCulture)},{historyEntry.Longitude.Value.ToString(CultureInfo.InvariantCulture)}")" target="_blank" class="ms-2 small text-decoration-none" title="Show on Google Maps">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            @("Unknown")
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="p-4 text-center text-muted">
+                     <i class="fas fa-folder-open fa-2x mb-2"></i><br/>
+                    No history entries for this package yet.
+                </div>
+            }
+        </div>
+    </div>
 
-    .card-header i {
-        margin-right: 8px;
-    }
+    <hr class="my-4"/>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a asp-action="Index" asp-controller="Home" class="btn btn-outline-secondary btn-lg shadow-sm">
+            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+        </a>
+        @if (currentUserRole == "User" && Model.CurrentStatus?.Name == "In Delivery") // Example: Pick up button for user
+        {
+            <form asp-controller="Package" asp-action="PickUpPackage" asp-route-id="@Model.PackageId" method="post" style="display:inline;">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-success btn-lg shadow-sm"
+                        onclick="return confirm('Are you sure you want to mark this package as picked up/delivered?');">
+                    <i class="fas fa-hand-paper me-2"></i>Mark as Picked Up
+                </button>
+            </form>
+        }
+         else if (currentUserRole == "User")
+        {
+            <a asp-controller="Package" asp-action="SendPackage" class="btn btn-primary btn-lg shadow-sm">
+                <i class="fas fa-plus me-2"></i>Send Another Package
+            </a>
+        }
+    </div>
+}
 
-    .badge {
-        font-size: 0.9em;
+@functions {
+    private string GetStatusBadgeClass(string? statusName)
+    {
+        if (string.IsNullOrEmpty(statusName)) return "bg-secondary text-white"; 
+        return statusName.ToLowerInvariant() switch
+        {
+            "sent" => "badge-info",
+            "new order" => "badge-secondary",
+            "processing" => "badge-processing",
+            "in delivery" => "badge-in-delivery",
+            "in transit" => "badge-in-transit",
+            "delivered" => "badge-delivered",
+            "failed" => "badge-failed",
+            "cancelled" => "badge-cancelled",
+            _ => "bg-primary text-white"
+        };
     }
-</style>
+}
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var historyPointsJson = @Html.Raw(Json.Serialize(historyPointsForMap));
+            var currentLocationJson = @Html.Raw(Json.Serialize(currentLocationForMap));
+
+            var mapElement = document.getElementById('packageMapUserDetails'); // Unique ID
+            if (!mapElement) {
+                return;
+            }
+            
+            if (historyPointsJson.length === 0 && !currentLocationJson) {
+                 return;
+            }
+
+            var mapCenter = [20, 0]; 
+            var mapZoom = 2;
+            var allLatLngs = [];
+
+            if (historyPointsJson.length > 0) {
+                // Center on the last known history point for relevance for users
+                mapCenter = [historyPointsJson[historyPointsJson.length - 1].lat, historyPointsJson[historyPointsJson.length - 1].lng];
+                mapZoom = 10; 
+            } else if (currentLocationJson) {
+                mapCenter = [currentLocationJson.lat, currentLocationJson.lng];
+                mapZoom = 13; 
+            }
+            
+            var map = L.map('packageMapUserDetails').setView(mapCenter, mapZoom);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 18,
+                tileSize: 512,
+                zoomOffset: -1
+            }).addTo(map);
+
+            var historyIcon = L.icon({
+                iconUrl: '@Url.Content("~/images/leaflet/marker-icon.png")',
+                iconRetinaUrl: '@Url.Content("~/images/leaflet/marker-icon-2x.png")',
+                shadowUrl: '@Url.Content("~/images/leaflet/marker-shadow.png")',
+                iconSize:    [25, 41], 
+                iconAnchor:  [12, 41], 
+                popupAnchor: [1, -34], 
+                shadowSize:  [41, 41]  
+            });
+
+            var currentIcon = L.icon({
+                iconUrl: '@Url.Content("~/images/leaflet/marker-icon-red.png")', 
+                iconRetinaUrl: '@Url.Content("~/images/leaflet/marker-icon-2x-red.png")', 
+                shadowUrl: '@Url.Content("~/images/leaflet/marker-shadow.png")',
+                iconSize:    [25, 41],
+                iconAnchor:  [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize:  [41, 41]
+            });
+            
+            var polylinePoints = [];
+
+            historyPointsJson.forEach(function(point, index) {
+                var latLng = L.latLng(point.lat, point.lng);
+                allLatLngs.push(latLng);
+                polylinePoints.push(latLng);
+                L.marker(latLng, {icon: historyIcon})
+                    .addTo(map)
+                    .bindPopup("<b>Status:</b> " + point.status + "<br><b>Time:</b> " + point.timestamp + "<br><b>Location:</b> " + point.lat.toFixed(5) + ", " + point.lng.toFixed(5));
+            });
+
+            if (currentLocationJson) {
+                var currentLatLng = L.latLng(currentLocationJson.lat, currentLocationJson.lng);
+                allLatLngs.push(currentLatLng);
+                
+                var isCurrentLatest = true;
+                if(historyPointsJson.length > 0) {
+                    var lastHistoryTimestampString = historyPointsJson[historyPointsJson.length - 1].timestamp;
+                    // Assuming currentLocationJson also gets a 'timestamp' property from the C# model
+                    // If not, this comparison might not be accurate or needed.
+                    // For user view, current location is always the latest if available.
+                     if (polylinePoints.length > 0 && 
+                        (polylinePoints[polylinePoints.length-1].lat === currentLatLng.lat && polylinePoints[polylinePoints.length-1].lng === currentLatLng.lng)) {
+                        // If current location is identical to the last history point, don't add to polyline again
+                     } else {
+                        polylinePoints.push(currentLatLng);
+                     }
+                } else {
+                     polylinePoints.push(currentLatLng); // If no history, current is the only point for polyline
+                }
+
+                L.marker(currentLatLng, {icon: currentIcon, zIndexOffset: 1000 }) 
+                    .addTo(map)
+                    .bindPopup("<b>Current Status:</b> " + currentLocationJson.status + "<br><b>Location:</b> " + currentLatLng.lat.toFixed(5) + ", " + currentLatLng.lng.toFixed(5))
+                    .openPopup(); 
+            }
+
+            if (polylinePoints.length > 1) {
+                L.polyline(polylinePoints, {color: 'var(--primary-yellow-dark)', weight: 3, opacity: 0.7}).addTo(map);
+            }
+
+            if (allLatLngs.length > 0) {
+                map.fitBounds(L.latLngBounds(allLatLngs), { padding: [40, 40] });
+            } else if (!currentLocationJson && historyPointsJson.length === 0) {
+                map.setView([51.505, -0.09], 2); 
+            }
+        });
+    </script>
+}
