@@ -2,196 +2,266 @@
 
 @{
     ViewData["Title"] = (Model != null && !string.IsNullOrEmpty(Model.TrackingNumber))
-                            ? $"Update Package Status: {Model.TrackingNumber}"
+                            ? $"Update Package: {Model.TrackingNumber}"
                             : "Update Package Status";
 }
 
-<div class="page-header">
+<div class="page-header mb-4">
     <h1><i class="fas fa-edit me-3"></i>@ViewData["Title"]</h1>
-    <p>Update the delivery status and, optionally, the current location of the package by providing an address.</p>
+    <p class="lead">Update the package status and, optionally, its current location by providing an address or coordinates.</p>
 </div>
 
 @if (Model == null)
 {
-    <div class="alert alert-danger">
+    <div class="alert alert-danger shadow-sm">
         <i class="fas fa-exclamation-triangle me-2"></i>
-        Error: Cannot load the update form data.
+        Error: Cannot load the update form data. The package may not exist or is not assigned to you.
     </div>
-    <a href="@Url.Action("ActivePackages", "Courier")" class="btn btn-outline-secondary">
-        <i class="fas fa-arrow-left me-1"></i>Back to List
+    <a href="@Url.Action("ActivePackages", "Courier")" class="btn btn-outline-secondary btn-lg mt-3">
+        <i class="fas fa-arrow-left me-2"></i>Back to Active Packages
     </a>
 }
 else
 {
     <div class="row">
-        <div class="col-lg-8 mx-auto">
-            <div class="card shadow-custom">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-box me-2"></i>Package Information</h5>
-                </div>
-                <div class="card-body">
-                    <form asp-action="UpdateStatus" asp-route-id="@Model.PackageId" method="post" id="updateStatusForm">
-                        @Html.AntiForgeryToken()
+        <div class="col-xl-8 col-lg-10 mx-auto">
+            <form asp-action="UpdateStatus" asp-route-id="@Model.PackageId" method="post" id="updateStatusForm">
+                @Html.AntiForgeryToken()
 
-                        <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm" role="alert"></div>
 
-                        <input type="hidden" asp-for="PackageId" />
-                        <input type="hidden" asp-for="TrackingNumber" />
-                        <input type="hidden" asp-for="CurrentStatusName" />
-                        <input type="hidden" asp-for="CurrentLongitude" />
-                        <input type="hidden" asp-for="CurrentLatitude" />
+                <input type="hidden" asp-for="PackageId" />
+                <input type="hidden" asp-for="TrackingNumber" />
+                <input type="hidden" asp-for="CurrentStatusName" />
+                <input type="hidden" asp-for="CurrentLongitude" />
+                <input type="hidden" asp-for="CurrentLatitude" />
 
-                        <div class="row mb-4">
-                            <div class="col-md-12">
-                                <h6 class="text-primary mb-3"><i class="fas fa-info-circle me-2"></i>Current Package Information</h6>
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <div class="info-card">
-                                            <label class="fw-medium text-muted">Tracking Number</label>
-                                            <div class="h6 text-primary">@(Model.TrackingNumber ?? "N/A")</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="info-card">
-                                            <label class="fw-medium text-muted">Current Status</label>
-                                            <div><span class="status-badge badge-info">@(Model.CurrentStatusName ?? "N/A")</span></div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="info-card">
-                                            <label class="fw-medium text-muted">Current Coordinates</label>
-                                            <div class="small text-muted">
-                                                @if (Model.CurrentLatitude.HasValue && Model.CurrentLongitude.HasValue)
-                                                {
-                                                    <i class="fas fa-map-marker-alt me-1"></i>
-                                                    @($"Lat: {Model.CurrentLatitude.Value:F5}, Lon: {Model.CurrentLongitude.Value:F5}")
-                                                }
-                                                else
-                                                {
-                                                    <i class="fas fa-question-circle me-1"></i>@("Unknown")
-                                                }
-                                            </div>
-                                        </div>
+                <div class="card shadow-custom mb-4">
+                    <div class="card-header bg-yellow-light">
+                        <h5 class="mb-0 text-dark-gray"><i class="fas fa-info-circle me-2 text-yellow"></i>Current Package Information</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="info-card border-yellow p-3 rounded-custom bg-light">
+                                    <label class="fw-medium text-muted small text-uppercase">Tracking Number</label>
+                                    <div class="h5 text-yellow fw-bold">@Model.TrackingNumber</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-card border-yellow p-3 rounded-custom bg-light">
+                                    <label class="fw-medium text-muted small text-uppercase">Current Status</label>
+                                    <div><span class="badge @GetStatusBadgeClass(Model.CurrentStatusName) fs-6">@(Model.CurrentStatusName ?? "N/A")</span></div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-card border-yellow p-3 rounded-custom bg-light">
+                                    <label class="fw-medium text-muted small text-uppercase">Current Coordinates</label>
+                                    <div class="text-muted">
+                                        @if (Model.CurrentLatitude.HasValue && Model.CurrentLongitude.HasValue)
+                                        {
+                                            <i class="fas fa-map-marker-alt me-1 text-yellow"></i>
+                                            @($"Lat: {Model.CurrentLatitude.Value:F5}, Lon: {Model.CurrentLongitude.Value:F5}")
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-question-circle me-1 text-muted"></i>@("Unknown")
+                                        }
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        <hr />
-
-                        <h6 class="text-primary mb-3"><i class="fas fa-sync-alt me-2"></i>Update Status</h6>
-                        @if (Model.AvailableStatuses != null && Model.AvailableStatuses.Any())
-                        {
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label asp-for="NewStatusId" class="form-label">
-                                            <i class="fas fa-clipboard-list me-1"></i>New Status
-                                        </label>
-                                        <select asp-for="NewStatusId" asp-items="Model.AvailableStatuses" class="form-select form-select-lg">
-                                        </select>
-                                        <span asp-validation-for="NewStatusId" class="text-danger"></span>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label asp-for="Notes" class="form-label">
-                                            <i class="fas fa-sticky-note me-1"></i>Notes (Optional)
-                                        </label>
-                                        <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Add any additional notes"></textarea>
-                                        <span asp-validation-for="Notes" class="text-danger"></span>
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                        else if (Model.CurrentStatusName == "Delivered")
-                        {
-                            <div class="alert alert-success">
-                                <i class="fas fa-check-circle me-2"></i>
-                                This package has already been delivered. Status cannot be changed.
-                            </div>
-                            <input type="hidden" asp-for="NewStatusId" /> }
-                        else
-                        {
-                            <div class="alert alert-warning">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                No available statuses to change to, or the current status does not allow further changes by courier.
-                            </div>
-                             <input type="hidden" asp-for="NewStatusId" /> }
-
-                        <hr />
-
-                        <h6 class="text-primary mb-3"><i class="fas fa-map-marked-alt me-2"></i>Update Location By Address (Optional)</h6>
-                        <p class="text-muted small mb-3">If you provide a new address here, its coordinates will be used for the package location. Otherwise, existing coordinates or default logic will apply.</p>
-                        
-                        <div class="form-group mb-3">
-                            <label asp-for="NewLocationStreet" class="form-label"></label>
-                            <input asp-for="NewLocationStreet" class="form-control form-control-lg" placeholder="e.g., 123 Main St" />
-                            <span asp-validation-for="NewLocationStreet" class="text-danger"></span>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="NewLocationCity" class="form-label"></label>
-                                    <input asp-for="NewLocationCity" class="form-control form-control-lg" placeholder="e.g., Anytown" />
-                                    <span asp-validation-for="NewLocationCity" class="text-danger"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group mb-3">
-                                    <label asp-for="NewLocationZipCode" class="form-label"></label>
-                                    <input asp-for="NewLocationZipCode" class="form-control form-control-lg" placeholder="e.g., 90210" />
-                                    <span asp-validation-for="NewLocationZipCode" class="text-danger"></span>
-                                </div>
-                            </div>
-                             <div class="col-md-3">
-                                <div class="form-group mb-3">
-                                    <label asp-for="NewLocationCountry" class="form-label"></label>
-                                    <input asp-for="NewLocationCountry" class="form-control form-control-lg" placeholder="e.g., USA" />
-                                    <span asp-validation-for="NewLocationCountry" class="text-danger"></span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <h6 class="text-primary mb-3 mt-3"><i class="fas fa-crosshairs me-2"></i>Or Update By Coordinates (Optional)</h6>
-                         <p class="text-muted small mb-3">If you set coordinates directly, they will override any address provided above for this update.</p>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="NewLatitude" class="form-label"></label>
-                                    <input asp-for="NewLatitude" class="form-control form-control-lg" placeholder="e.g., 50.0614 (decimal)" />
-                                    <span asp-validation-for="NewLatitude" class="text-danger"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="NewLongitude" class="form-label"></label>
-                                    <input asp-for="NewLongitude" class="form-control form-control-lg" placeholder="e.g., 19.9366 (decimal)" />
-                                    <span asp-validation-for="NewLongitude" class="text-danger"></span>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="card-footer bg-light">
-                    <div class="d-flex justify-content-between">
-                        <a href="@Url.Action("PackageDetails", "Courier", new { id = Model.PackageId })" class="btn btn-outline-secondary btn-lg">
-                            <i class="fas fa-times me-1"></i>Cancel
-                        </a>
-                        @if (Model.CurrentStatusName != "Delivered" && (Model.AvailableStatuses != null && Model.AvailableStatuses.Any()))
-                        {
-                            <button type="submit" form="updateStatusForm" class="btn btn-primary btn-lg">
-                                <i class="fas fa-save me-1"></i>Save Changes
-                            </button>
-                        }
                     </div>
                 </div>
-            </div>
+
+                <div class="card shadow-custom">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Update Details</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        @if (Model.CurrentStatusName == "Delivered" && (Model.AvailableStatuses == null || !Model.AvailableStatuses.Any()))
+                        {
+                            <div class="alert alert-success shadow-sm">
+                                <i class="fas fa-check-circle me-2"></i>
+                                This package has already been delivered. Status cannot be changed further, but you can update notes or location if necessary.
+                            </div>
+                             <input type="hidden" asp-for="NewStatusId" value="@Model.NewStatusId" /> }
+                        else if (Model.AvailableStatuses == null || !Model.AvailableStatuses.Any())
+                        {
+                             <div class="alert alert-warning shadow-sm">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                No available statuses to change to, or the current status does not allow further changes by courier for this package. You might still be able to update location or notes.
+                            </div>
+                            <input type="hidden" asp-for="NewStatusId" value="@Model.NewStatusId" /> }
+
+
+                        <div class="form-section mb-4">
+                            <h6 class="text-primary mb-3 fw-semibold"><i class="fas fa-sync-alt me-2"></i>Change Status</h6>
+                             @if (Model.AvailableStatuses != null && Model.AvailableStatuses.Any())
+                            {
+                                <div class="form-group mb-3">
+                                    <label asp-for="NewStatusId" class="form-label"></label>
+                                    <select asp-for="NewStatusId" asp-items="Model.AvailableStatuses" class="form-select form-select-lg shadow-sm">
+                                        <option value="">-- Select New Status --</option>
+                                    </select>
+                                    <span asp-validation-for="NewStatusId" class="text-danger"></span>
+                                </div>
+                            }
+                             <div class="form-group mb-3">
+                                <label asp-for="Notes" class="form-label"></label>
+                                <textarea asp-for="Notes" class="form-control form-control-lg shadow-sm" rows="3" placeholder="Add any additional notes for this update..."></textarea>
+                                <span asp-validation-for="Notes" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="form-section mb-4">
+                            <h6 class="text-primary mb-3 fw-semibold"><i class="fas fa-map-marked-alt me-2"></i>Update Location by Address <small class="text-muted fw-normal">(Optional)</small></h6>
+                            <p class="text-muted small mb-3">Provide a full address to update the package's location. This will be geocoded to coordinates.</p>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="NewLocationStreet" class="form-label"><i class="fas fa-road me-2 text-muted"></i>Street Address</label>
+                                <input asp-for="NewLocationStreet" class="form-control form-control-lg shadow-sm" placeholder="e.g., 123 Main St, Apt 4B" />
+                                <span asp-validation-for="NewLocationStreet" class="text-danger"></span>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-5">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="NewLocationCity" class="form-label"><i class="fas fa-city me-2 text-muted"></i>City</label>
+                                        <input asp-for="NewLocationCity" class="form-control form-control-lg shadow-sm" placeholder="e.g., Anytown" />
+                                        <span asp-validation-for="NewLocationCity" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="NewLocationZipCode" class="form-label"><i class="fas fa-mail-bulk me-2 text-muted"></i>Zip Code</label>
+                                        <input asp-for="NewLocationZipCode" class="form-control form-control-lg shadow-sm" placeholder="e.g., 90210" />
+                                        <span asp-validation-for="NewLocationZipCode" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                 <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="NewLocationCountry" class="form-label"><i class="fas fa-globe-americas me-2 text-muted"></i>Country</label>
+                                        <input asp-for="NewLocationCountry" class="form-control form-control-lg shadow-sm" placeholder="e.g., USA" />
+                                        <span asp-validation-for="NewLocationCountry" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr class="my-4" />
+
+                        <div class="form-section">
+                            <h6 class="text-primary mb-3 fw-semibold"><i class="fas fa-crosshairs me-2"></i>Or Update by Coordinates <small class="text-muted fw-normal">(Optional)</small></h6>
+                            <p class="text-muted small mb-3">If you set coordinates directly, they will override any address provided above for this update.</p>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="NewLatitude" class="form-label"><i class="fas fa-ruler-vertical me-2 text-muted"></i>Latitude</label>
+                                        <input asp-for="NewLatitude" type="number" step="any" class="form-control form-control-lg shadow-sm" placeholder="e.g., 50.0614 (decimal)" />
+                                        <span asp-validation-for="NewLatitude" class="text-danger"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="NewLongitude" class="form-label"><i class="fas fa-ruler-horizontal me-2 text-muted"></i>Longitude</label>
+                                        <input asp-for="NewLongitude" type="number" step="any" class="form-control form-control-lg shadow-sm" placeholder="e.g., 19.9366 (decimal)" />
+                                        <span asp-validation-for="NewLongitude" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-light p-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="@Url.Action("PackageDetails", "Courier", new { id = Model.PackageId })" class="btn btn-outline-secondary btn-lg shadow-sm">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                             @if (Model.CurrentStatusName != "Delivered" || (Model.AvailableStatuses != null && Model.AvailableStatuses.Any()))
+                            {
+                                <button type="submit" form="updateStatusForm" class="btn btn-primary btn-lg shadow-sm">
+                                    <i class="fas fa-save me-2"></i>Save Changes
+                                </button>
+                            } else {
+                                 <button type="submit" form="updateStatusForm" class="btn btn-primary btn-lg shadow-sm" title="Update notes or location for delivered package">
+                                    <i class="fas fa-save me-2"></i>Save Note/Location
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 }
 
+@functions {
+    private string GetStatusBadgeClass(string? statusName)
+    {
+        if (string.IsNullOrEmpty(statusName)) return "badge-secondary"; // Default
+        return statusName.ToLower() switch
+        {
+            "sent" => "badge-info",
+            "new order" => "badge-secondary",
+            "processing" => "badge-processing", // Assumes you have this in your CSS
+            "in delivery" => "badge-in-delivery",
+            "in transit" => "badge-in-transit",
+            "delivered" => "badge-delivered",
+            "failed" => "badge-failed",
+            "cancelled" => "badge-cancelled",
+            _ => "badge-info" // A generic fallback
+        };
+    }
+}
+
+
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        // Optional: Add any client-side enhancements here if needed
+        // For example, to clear coordinate fields if address fields are typed into, or vice-versa.
+        // This can prevent accidental submission of both.
+        (function () {
+            const latInput = document.getElementById('@Html.IdFor(m => m.NewLatitude)');
+            const lonInput = document.getElementById('@Html.IdFor(m => m.NewLongitude)');
+            const streetInput = document.getElementById('@Html.IdFor(m => m.NewLocationStreet)');
+            const cityInput = document.getElementById('@Html.IdFor(m => m.NewLocationCity)');
+            const zipInput = document.getElementById('@Html.IdFor(m => m.NewLocationZipCode)');
+            const countryInput = document.getElementById('@Html.IdFor(m => m.NewLocationCountry)');
+
+            function clearCoordinates() {
+                if (latInput) latInput.value = '';
+                if (lonInput) lonInput.value = '';
+            }
+
+            function clearAddress() {
+                if (streetInput) streetInput.value = '';
+                if (cityInput) cityInput.value = '';
+                if (zipInput) zipInput.value = '';
+                if (countryInput) countryInput.value = '';
+            }
+
+            if (streetInput && cityInput && zipInput && countryInput) {
+                [streetInput, cityInput, zipInput, countryInput].forEach(input => {
+                    input.addEventListener('input', function() {
+                        // If user types in address, consider clearing coordinates
+                        // This is a simple example; you might want more sophisticated logic
+                        // clearCoordinates(); 
+                        // Decided against auto-clearing to allow user to have both and let server decide priority
+                    });
+                });
+            }
+
+            if (latInput && lonInput) {
+                 [latInput, lonInput].forEach(input => {
+                    input.addEventListener('input', function() {
+                         // If user types in coordinates, consider clearing address
+                         // clearAddress();
+                    });
+                });
+            }
+        })();
+    </script>
 }
