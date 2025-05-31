@@ -11,8 +11,9 @@ This project was developed as part of an Advanced Programming (Programowanie Zaa
 
 ## Authors
 
-* **Patryk Chamera** 
-* **Karol Bystrek** 
+* **Patryk Chamera** - [GitHub Profile](https://github.com/xhamera1)
+* **Karol Bystrek** - [GitHub Profile](https://github.com/karolbystrek)
+
 
 
 ## System Features
