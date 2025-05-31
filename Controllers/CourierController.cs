@@ -319,8 +319,9 @@ namespace _10.Controllers
             }
 
             var courierId = GetCurrentUserId();
-            Package? packageToUpdate = null;
+            Package? packageToUpdate = null; // To store the package entity
 
+            // Helper to repopulate ViewModel on error, ensuring dropdowns are filled
             async Task PopulateViewModelForError(CourierUpdatePackageStatusViewModel vm)
             {
                 var currentPackageData = await _context.Packages
@@ -329,10 +330,10 @@ namespace _10.Controllers
                                                    .FirstOrDefaultAsync(p => p.PackageId == vm.PackageId);
                 if (currentPackageData != null)
                 {
-                    vm.TrackingNumber = currentPackageData.TrackingNumber; // Ensure tracking number is set
+                    vm.TrackingNumber = currentPackageData.TrackingNumber;
                     vm.CurrentStatusName = currentPackageData.CurrentStatus?.Description;
-                    vm.CurrentLongitude = currentPackageData.Longitude;
-                    vm.CurrentLatitude = currentPackageData.Latitude;
+                    vm.CurrentLongitude = currentPackageData.Longitude; // For display
+                    vm.CurrentLatitude = currentPackageData.Latitude;   // For display
                 }
 
                 List<string> allowedNewStatusNamesOnError = new List<string>();
@@ -343,9 +344,11 @@ namespace _10.Controllers
                 }
                 else if (currentPackageData?.CurrentStatus?.Name == "In Delivery")
                 {
-                    allowedNewStatusNamesOnError.Add("In Delivery");
+                    allowedNewStatusNamesOnError.Add("In Delivery"); // Allow re-updating "In Delivery" with new location
                     allowedNewStatusNamesOnError.Add("Delivered");
                 }
+                // If current status is null or not Sent/In Delivery, courier might not be able to change it via this form
+                // Or, if it's a new package being assigned and still "Sent", allow changes.
 
                 vm.AvailableStatuses = await _context.StatusDefinitions
                                            .Where(s => allowedNewStatusNamesOnError.Contains(s.Name))
@@ -364,7 +367,9 @@ namespace _10.Controllers
 
                     packageToUpdate = await _context.Packages
                         .Include(p => p.CurrentStatus)
-                        .Include(p => p.AssignedCourier) // Include for authorization
+                        .Include(p => p.OriginAddress)      // Eager load for geocoding fallback
+                        .Include(p => p.DestinationAddress) // Eager load for geocoding fallback
+                        .Include(p => p.AssignedCourier)    // For authorization
                         .FirstOrDefaultAsync(p => p.PackageId == viewModel.PackageId);
 
                     if (packageToUpdate == null)
@@ -375,20 +380,20 @@ namespace _10.Controllers
                         return View(viewModel);
                     }
 
-                    // Use the authorization service to check modification access
                     if (!_authorizationService.IsAuthorizedToModifyPackage(packageToUpdate, courierId, userRole))
                     {
                         await transaction.RollbackAsync();
-                        ModelState.AddModelError(string.Empty, "You do not have permission to update this package.");
+                        TempData["ErrorMessage"] = "You are not authorized to update this package.";
+                        _logger.LogWarning("Courier {CourierId} (Role: {UserRole}) attempt to modify package {PackageId} denied.", courierId, userRole, packageToUpdate.PackageId);
                         await PopulateViewModelForError(viewModel);
-                        return View(viewModel);
+                        return View(viewModel); // Or RedirectToAction(nameof(ActivePackages))
                     }
 
                     var newStatus = await _context.StatusDefinitions.FindAsync(viewModel.NewStatusId);
                     if (newStatus == null)
                     {
                         await transaction.RollbackAsync();
-                        ModelState.AddModelError("NewStatusId", "The selected new status is invalid.");
+                        ModelState.AddModelError(nameof(viewModel.NewStatusId), "The selected new status is invalid.");
                         await PopulateViewModelForError(viewModel);
                         return View(viewModel);
                     }
@@ -396,74 +401,83 @@ namespace _10.Controllers
                     if (packageToUpdate.CurrentStatus?.Name == "Delivered" && newStatus.Name != "Delivered")
                     {
                         await transaction.RollbackAsync();
-                        ModelState.AddModelError("NewStatusId", "Cannot change the status of a package that has already been delivered.");
+                        ModelState.AddModelError(nameof(viewModel.NewStatusId), "Cannot change the status of a package that has already been delivered, unless re-affirming 'Delivered' status with new notes/location.");
                         await PopulateViewModelForError(viewModel);
                         return View(viewModel);
                     }
 
                     bool statusChanged = packageToUpdate.StatusId != viewModel.NewStatusId;
-                    bool locationChanged = packageToUpdate.Longitude != viewModel.NewLongitude || packageToUpdate.Latitude != viewModel.NewLatitude;
-                    bool notesChanged = packageToUpdate.Notes != viewModel.Notes;
+                    bool locationChangedByUser = false; // Flag to track if location was changed by user input this cycle
 
-                    // Smart coordinate handling with geocoding fallback
-                    decimal? finalLatitude = viewModel.NewLatitude;
-                    decimal? finalLongitude = viewModel.NewLongitude;
+                    decimal? finalLatitude = packageToUpdate.Latitude; // Default to existing
+                    decimal? finalLongitude = packageToUpdate.Longitude; // Default to existing
 
-                    // If coordinates are not provided manually, try to use geocoding based on status
-                    if (!finalLatitude.HasValue || !finalLongitude.HasValue)
+                    // Priority 1: Direct coordinate input (if provided)
+                    if (viewModel.NewLatitude.HasValue && viewModel.NewLongitude.HasValue)
                     {
-                        try
+                        finalLatitude = viewModel.NewLatitude.Value;
+                        finalLongitude = viewModel.NewLongitude.Value;
+                        locationChangedByUser = true;
+                        _logger.LogInformation("Package {PackageId}: Using directly provided coordinates Lat={Lat}, Lon={Lon}", packageToUpdate.PackageId, finalLatitude, finalLongitude);
+                    }
+                    // Priority 2: New address provided by courier for geocoding
+                    else if (viewModel.HasNewLocationAddress())
+                    {
+                        _logger.LogInformation("Package {PackageId}: Attempting to geocode provided address: {Street}, {City}, {Zip}, {Country}",
+                                               packageToUpdate.PackageId, viewModel.NewLocationStreet, viewModel.NewLocationCity, viewModel.NewLocationZipCode, viewModel.NewLocationCountry);
+                        var addressToGeocode = new Address
                         {
-                            Address? addressToGeocode = null;
+                            Street = viewModel.NewLocationStreet!, // Null checks done by HasNewLocationAddress
+                            City = viewModel.NewLocationCity!,
+                            ZipCode = viewModel.NewLocationZipCode!,
+                            Country = viewModel.NewLocationCountry!
+                        };
+                        var geocodingResult = await _packageLocationService.GeocodeAddressAsync(addressToGeocode);
 
-                            if (newStatus.Name == "Delivered")
-                            {
-                                // For delivery, use destination address
-                                if (packageToUpdate.DestinationAddress == null)
-                                {
-                                    packageToUpdate.DestinationAddress = await _context.Addresses
-                                        .FirstOrDefaultAsync(a => a.AddressId == packageToUpdate.DestinationAddressId);
-                                }
-                                addressToGeocode = packageToUpdate.DestinationAddress;
-                            }
-                            else if (newStatus.Name == "Sent" && (!packageToUpdate.Latitude.HasValue || !packageToUpdate.Longitude.HasValue))
-                            {
-                                // For sent packages without coordinates, use origin address
-                                if (packageToUpdate.OriginAddress == null)
-                                {
-                                    packageToUpdate.OriginAddress = await _context.Addresses
-                                        .FirstOrDefaultAsync(a => a.AddressId == packageToUpdate.OriginAddressId);
-                                }
-                                addressToGeocode = packageToUpdate.OriginAddress;
-                            }
-
-                            if (addressToGeocode != null)
-                            {
-                                var geocodingResult = await _packageLocationService.GeocodeAddressAsync(addressToGeocode);
-                                if (geocodingResult.IsSuccess && geocodingResult.Latitude.HasValue && geocodingResult.Longitude.HasValue)
-                                {
-                                    finalLatitude = geocodingResult.Latitude.Value;
-                                    finalLongitude = geocodingResult.Longitude.Value;
-                                    locationChanged = true; // Mark as changed since we got new coordinates
-
-                                    _logger.LogInformation("Auto-geocoded coordinates for package {PackageId} status {StatusName}: {Lat}, {Lon}",
-                                        packageToUpdate.PackageId, newStatus.Name, finalLatitude, finalLongitude);
-                                }
-                                else
-                                {
-                                    _logger.LogWarning("Failed to auto-geocode address for package {PackageId} status {StatusName}: {Error}",
-                                        packageToUpdate.PackageId, newStatus.Name, geocodingResult.ErrorMessage);
-                                }
-                            }
+                        if (geocodingResult.IsSuccess && geocodingResult.Latitude.HasValue && geocodingResult.Longitude.HasValue)
+                        {
+                            finalLatitude = geocodingResult.Latitude.Value;
+                            finalLongitude = geocodingResult.Longitude.Value;
+                            locationChangedByUser = true;
+                             _logger.LogInformation("Package {PackageId}: Successfully geocoded provided address to Lat={Lat}, Lon={Lon}", packageToUpdate.PackageId, finalLatitude, finalLongitude);
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            _logger.LogError(ex, "Error during auto-geocoding for package {PackageId} status update", packageToUpdate.PackageId);
-                            // Continue without geocoding
+                            await transaction.RollbackAsync();
+                            var geocodeError = $"Could not geocode the provided address: {geocodingResult.ErrorMessage ?? "Unknown error."}";
+                            ModelState.AddModelError(nameof(viewModel.NewLocationStreet), geocodeError);
+                            _logger.LogWarning("Package {PackageId}: Geocoding failed for provided address. Error: {Error}", packageToUpdate.PackageId, geocodeError);
+                            await PopulateViewModelForError(viewModel);
+                            return View(viewModel);
                         }
                     }
+                    // Priority 3: Geocoding fallback for specific statuses if no user input for location
+                    else if (newStatus.Name == "Delivered" && packageToUpdate.DestinationAddress != null)
+                    {
+                         _logger.LogInformation("Package {PackageId}: Status changed to 'Delivered'. Attempting to geocode destination address.", packageToUpdate.PackageId);
+                        var geocodingResult = await _packageLocationService.GeocodeAddressAsync(packageToUpdate.DestinationAddress);
+                        if (geocodingResult.IsSuccess && geocodingResult.Latitude.HasValue && geocodingResult.Longitude.HasValue)
+                        {
+                            finalLatitude = geocodingResult.Latitude.Value;
+                            finalLongitude = geocodingResult.Longitude.Value;
+                            locationChangedByUser = true; // Location derived from status change
+                            _logger.LogInformation("Package {PackageId}: Geocoded destination for 'Delivered' status to Lat={Lat}, Lon={Lon}", packageToUpdate.PackageId, finalLatitude, finalLongitude);
+                        }
+                         else
+                        {
+                             _logger.LogWarning("Package {PackageId}: Failed to geocode destination address for 'Delivered' status. Error: {Error}", packageToUpdate.PackageId, geocodingResult.ErrorMessage);
+                             // Continue without new coordinates if geocoding destination fails
+                        }
+                    }
+                    // Add more fallback logic if needed, e.g., for "In Delivery" if no specific location provided.
+                    // For now, if no address/coords provided and not "Delivered", location remains as is unless explicitly cleared.
 
-                    packageToUpdate.StatusId = viewModel.NewStatusId;
+                    bool notesChanged = packageToUpdate.Notes != viewModel.Notes;
+
+                    // Determine if the final location actually differs from the package's current location
+                    bool finalLocationIsDifferent = packageToUpdate.Latitude != finalLatitude || packageToUpdate.Longitude != finalLongitude;
+
+                    packageToUpdate.StatusId = newStatus.StatusId; // Use the ID from the fetched newStatus object
                     packageToUpdate.Longitude = finalLongitude;
                     packageToUpdate.Latitude = finalLatitude;
                     packageToUpdate.Notes = viewModel.Notes;
@@ -473,33 +487,39 @@ namespace _10.Controllers
                         packageToUpdate.DeliveryDate = DateTime.UtcNow;
                     }
 
-                    if (statusChanged || locationChanged || notesChanged ||
+                    // Create history entry if status changed, or location actually changed, or notes changed,
+                    // or if it's an "In Delivery" update (even if location is the same, it's a "ping").
+                    if (statusChanged || finalLocationIsDifferent || notesChanged ||
                         (newStatus.Name == "In Delivery" && packageToUpdate.CurrentStatus?.Name == "In Delivery"))
                     {
                         var packageHistoryEntry = new PackageHistory
                         {
                             PackageId = packageToUpdate.PackageId,
-                            StatusId = viewModel.NewStatusId,
+                            StatusId = newStatus.StatusId,
                             Timestamp = DateTime.UtcNow,
                             Longitude = finalLongitude,
                             Latitude = finalLatitude
+                            // Note: PackageHistory does not store courier notes directly by default.
+                            // If you want history-specific notes, you'd add a Notes field to PackageHistory entity.
                         };
                         _context.PackageHistories.Add(packageHistoryEntry);
+                        _logger.LogInformation("Package {PackageId}: PackageHistory entry created for status {StatusName}.", packageToUpdate.PackageId, newStatus.Name);
                     }
 
                     _context.Packages.Update(packageToUpdate);
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
-                    _logger.LogInformation("Courier {CourierId} updated package {PackageId} to status {NewStatusId}", courierId, packageToUpdate.PackageId, viewModel.NewStatusId);
-                    TempData["SuccessMessage"] = $"Package {packageToUpdate.TrackingNumber} status successfully updated.";
+                    _logger.LogInformation("Courier {CourierId} successfully updated package {PackageId} (Tracking: {TrackingNumber}) to status {NewStatusName}. Location: Lat={Lat}, Lon={Lon}.",
+                                           courierId, packageToUpdate.PackageId, packageToUpdate.TrackingNumber, newStatus.Name, finalLatitude, finalLongitude);
+                    TempData["SuccessMessage"] = $"Package {packageToUpdate.TrackingNumber} status successfully updated to '{newStatus.Description}'.";
                     return RedirectToAction(nameof(PackageDetails), new { id = packageToUpdate.PackageId });
                 }
-                catch (InvalidOperationException ex)
+                catch (InvalidOperationException ex) // Catch issues from GetCurrentUserId/Role
                 {
                     await transaction.RollbackAsync();
-                    _logger.LogError(ex, "Error in UpdateStatus (POST) while fetching courier ID for package {PackageId}.", viewModel.PackageId);
-                    ModelState.AddModelError(string.Empty, ex.Message);
+                    _logger.LogError(ex, "Authorization error in UpdateStatus (POST) for package {PackageId}.", viewModel.PackageId);
+                    ModelState.AddModelError(string.Empty, "An authorization error occurred: " + ex.Message);
                 }
                 catch (DbUpdateConcurrencyException ex)
                 {
@@ -511,12 +531,20 @@ namespace _10.Controllers
                 {
                     await transaction.RollbackAsync();
                     _logger.LogError(ex, "Unexpected error in UpdateStatus (POST) for package {PackageId}.", viewModel.PackageId);
-                    ModelState.AddModelError(string.Empty, "An unexpected error occurred while updating status.");
+                    ModelState.AddModelError(string.Empty, "An unexpected error occurred while updating the package status.");
                 }
             }
+            else // ModelState is invalid
+            {
+                 _logger.LogWarning("UpdateStatus (POST) for package ID {PackageId} failed due to invalid model state. Errors: {Errors}",
+                                   viewModel.PackageId,
+                                   string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
+            }
 
-            await PopulateViewModelForError(viewModel);
+            // If we reach here, something went wrong, or ModelState was initially invalid
+            await PopulateViewModelForError(viewModel); // Repopulate necessary data for the view
             return View(viewModel);
         }
+
     }
 }

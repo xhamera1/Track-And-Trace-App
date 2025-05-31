@@ -2,13 +2,13 @@
 
 @{
     ViewData["Title"] = (Model != null && !string.IsNullOrEmpty(Model.TrackingNumber))
-                        ? $"Update Package Status: {Model.TrackingNumber}"
-                        : "Update Package Status";
+                            ? $"Update Package Status: {Model.TrackingNumber}"
+                            : "Update Package Status";
 }
 
 <div class="page-header">
-    <h1><i class="fas fa-edit me-3"></i>Update Package Status</h1>
-    <p>Update the delivery status and location of the package</p>
+    <h1><i class="fas fa-edit me-3"></i>@ViewData["Title"]</h1>
+    <p>Update the delivery status and, optionally, the current location of the package by providing an address.</p>
 </div>
 
 @if (Model == null)
@@ -41,7 +41,6 @@ else
                         <input type="hidden" asp-for="CurrentLongitude" />
                         <input type="hidden" asp-for="CurrentLatitude" />
 
-                        <!-- Package Overview -->
                         <div class="row mb-4">
                             <div class="col-md-12">
                                 <h6 class="text-primary mb-3"><i class="fas fa-info-circle me-2"></i>Current Package Information</h6>
@@ -60,7 +59,7 @@ else
                                     </div>
                                     <div class="col-md-4">
                                         <div class="info-card">
-                                            <label class="fw-medium text-muted">Current Location</label>
+                                            <label class="fw-medium text-muted">Current Coordinates</label>
                                             <div class="small text-muted">
                                                 @if (Model.CurrentLatitude.HasValue && Model.CurrentLongitude.HasValue)
                                                 {
@@ -80,9 +79,7 @@ else
 
                         <hr />
 
-                        <!-- Status Update Section -->
                         <h6 class="text-primary mb-3"><i class="fas fa-sync-alt me-2"></i>Update Status</h6>
-
                         @if (Model.AvailableStatuses != null && Model.AvailableStatuses.Any())
                         {
                             <div class="row">
@@ -101,7 +98,7 @@ else
                                         <label asp-for="Notes" class="form-label">
                                             <i class="fas fa-sticky-note me-1"></i>Notes (Optional)
                                         </label>
-                                        <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Add any additional notes">@Model.Notes</textarea>
+                                        <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Add any additional notes"></textarea>
                                         <span asp-validation-for="Notes" class="text-danger"></span>
                                     </div>
                                 </div>
@@ -113,37 +110,64 @@ else
                                 <i class="fas fa-check-circle me-2"></i>
                                 This package has already been delivered. Status cannot be changed.
                             </div>
-                            <input type="hidden" asp-for="NewStatusId" />
-                        }
+                            <input type="hidden" asp-for="NewStatusId" /> }
                         else
                         {
                             <div class="alert alert-warning">
                                 <i class="fas fa-exclamation-triangle me-2"></i>
                                 No available statuses to change to, or the current status does not allow further changes by courier.
                             </div>
-                            <input type="hidden" asp-for="NewStatusId" />
-                        }
+                             <input type="hidden" asp-for="NewStatusId" /> }
 
-                        <!-- Location Update Section -->
-                        <h6 class="text-primary mb-3"><i class="fas fa-map-marker-alt me-2"></i>Update Location</h6>
+                        <hr />
+
+                        <h6 class="text-primary mb-3"><i class="fas fa-map-marked-alt me-2"></i>Update Location By Address (Optional)</h6>
+                        <p class="text-muted small mb-3">If you provide a new address here, its coordinates will be used for the package location. Otherwise, existing coordinates or default logic will apply.</p>
+                        
+                        <div class="form-group mb-3">
+                            <label asp-for="NewLocationStreet" class="form-label"></label>
+                            <input asp-for="NewLocationStreet" class="form-control form-control-lg" placeholder="e.g., 123 Main St" />
+                            <span asp-validation-for="NewLocationStreet" class="text-danger"></span>
+                        </div>
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label asp-for="NewLatitude" class="form-label">
-                                        <i class="fas fa-crosshairs me-1"></i>Latitude
-                                    </label>
-                                    <input asp-for="NewLatitude" class="form-control form-control-lg" placeholder="e.g., 50.0614" />
-                                    <div class="form-text">Enter the latitude coordinate</div>
+                                    <label asp-for="NewLocationCity" class="form-label"></label>
+                                    <input asp-for="NewLocationCity" class="form-control form-control-lg" placeholder="e.g., Anytown" />
+                                    <span asp-validation-for="NewLocationCity" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group mb-3">
+                                    <label asp-for="NewLocationZipCode" class="form-label"></label>
+                                    <input asp-for="NewLocationZipCode" class="form-control form-control-lg" placeholder="e.g., 90210" />
+                                    <span asp-validation-for="NewLocationZipCode" class="text-danger"></span>
+                                </div>
+                            </div>
+                             <div class="col-md-3">
+                                <div class="form-group mb-3">
+                                    <label asp-for="NewLocationCountry" class="form-label"></label>
+                                    <input asp-for="NewLocationCountry" class="form-control form-control-lg" placeholder="e.g., USA" />
+                                    <span asp-validation-for="NewLocationCountry" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 class="text-primary mb-3 mt-3"><i class="fas fa-crosshairs me-2"></i>Or Update By Coordinates (Optional)</h6>
+                         <p class="text-muted small mb-3">If you set coordinates directly, they will override any address provided above for this update.</p>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label asp-for="NewLatitude" class="form-label"></label>
+                                    <input asp-for="NewLatitude" class="form-control form-control-lg" placeholder="e.g., 50.0614 (decimal)" />
                                     <span asp-validation-for="NewLatitude" class="text-danger"></span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label asp-for="NewLongitude" class="form-label">
-                                        <i class="fas fa-crosshairs me-1"></i>Longitude
-                                    </label>
-                                    <input asp-for="NewLongitude" class="form-control form-control-lg" placeholder="e.g., 19.9366" />
-                                    <div class="form-text">Enter the longitude coordinate</div>
+                                    <label asp-for="NewLongitude" class="form-label"></label>
+                                    <input asp-for="NewLongitude" class="form-control form-control-lg" placeholder="e.g., 19.9366 (decimal)" />
                                     <span asp-validation-for="NewLongitude" class="text-danger"></span>
                                 </div>
                             </div>
@@ -155,7 +179,7 @@ else
                         <a href="@Url.Action("PackageDetails", "Courier", new { id = Model.PackageId })" class="btn btn-outline-secondary btn-lg">
                             <i class="fas fa-times me-1"></i>Cancel
                         </a>
-                        @if (Model.CurrentStatusName != "Delivered")
+                        @if (Model.CurrentStatusName != "Delivered" && (Model.AvailableStatuses != null && Model.AvailableStatuses.Any()))
                         {
                             <button type="submit" form="updateStatusForm" class="btn btn-primary btn-lg">
                                 <i class="fas fa-save me-1"></i>Save Changes
