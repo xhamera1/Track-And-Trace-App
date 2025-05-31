@@ -1,17 +1,100 @@
 @model _10.Models.Package
 @using Microsoft.AspNetCore.Http
 @using System.Globalization
+@using System.Text.Json; // Potrzebne do serializacji JSON
 
 @{
     ViewData["Title"] = Model != null ? $"Package Details: {Model.TrackingNumber}" : "Package Details";
     var currentUserRole = ViewContext.HttpContext.Session.GetString("UserRole");
     var currentUserIdStr = ViewContext.HttpContext.Session.GetString("UserId");
     int.TryParse(currentUserIdStr, out int currentUserId);
+
+    // Przygotowanie danych dla mapy Leaflet
+    var mapLocations = new List<object>();
+    if (Model?.History != null)
+    {
+        foreach (var historyEntry in Model.History.OrderBy(h => h.Timestamp)) // Sortuj chronologicznie
+        {
+            if (historyEntry.Latitude.HasValue && historyEntry.Longitude.HasValue)
+            {
+                mapLocations.Add(new
+                {
+                    lat = historyEntry.Latitude.Value,
+                    lon = historyEntry.Longitude.Value,
+                    timestamp = historyEntry.Timestamp.ToString("yyyy-MM-dd HH:mm"),
+                    status = historyEntry.Status?.Description ?? "N/A",
+                    isCurrent = false
+                });
+            }
+        }
+    }
+    // Dodanie aktualnej pozycji paczki, jeśli nie jest już ostatnim punktem w historii
+    // lub jeśli historia jest pusta, ale paczka ma koordynaty
+    bool currentLocAddedViaHistory = false;
+    if (Model?.Latitude.HasValue == true && Model.Longitude.HasValue == true)
+    {
+        if (mapLocations.Any())
+        {
+            var lastHistoryLoc = (dynamic)mapLocations.Last();
+            if (lastHistoryLoc.lat == Model.Latitude.Value && lastHistoryLoc.lon == Model.Longitude.Value && lastHistoryLoc.status == Model.CurrentStatus?.Description)
+            {
+                // Oznacz ostatni punkt historii jako aktualny, jeśli koordynaty i status pasują
+                // To jest uproszczenie; idealnie byłoby mieć dedykowany wskaźnik w danych
+                // Dla bezpieczeństwa, po prostu dodamy go jako osobny punkt jeśli nie ma pewności
+                 mapLocations[mapLocations.Count -1] = new {
+                    lat = lastHistoryLoc.lat,
+                    lon = lastHistoryLoc.lon,
+                    timestamp = lastHistoryLoc.timestamp, // lub Model.SubmissionDate jeśli to początek
+                    status = Model.CurrentStatus?.Description ?? "Current Location",
+                    isCurrent = true // Oznaczamy jako aktualny
+                };
+                currentLocAddedViaHistory = true;
+            }
+        }
+
+        if (!currentLocAddedViaHistory) // Dodaj, jeśli nie został dodany jako część historii
+        {
+             mapLocations.Add(new
+            {
+                lat = Model.Latitude.Value,
+                lon = Model.Longitude.Value,
+                timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm"), // Lub data ostatniej aktualizacji statusu
+                status = Model.CurrentStatus?.Description ?? "Current Location",
+                isCurrent = true
+            });
+        }
+    }
+    var mapLocationsJson = JsonSerializer.Serialize(mapLocations);
 }
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin="" />
+<style>
+    #packageMap {
+        height: 450px; /* Możesz dostosować wysokość */
+        width: 100%;
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--light-gray);
+    }
+    .map-container-wrapper {
+        padding: var(--spacing-md);
+        background-color: var(--primary-yellow-pale);
+        border-radius: var(--border-radius-xl);
+        margin-bottom: var(--spacing-xl);
+    }
+    .leaflet-popup-content-wrapper {
+        border-radius: var(--border-radius-sm);
+    }
+    .leaflet-popup-content p {
+        margin: 0.5em 0;
+    }
+</style>
 
 <div class="page-header mb-4">
     <h1><i class="fas fa-box-open me-3"></i>@ViewData["Title"]</h1>
-    <p class="lead">Detailed information and history for the selected package.</p>
+    <p class="lead">Detailed information, history, and map for the selected package.</p>
 </div>
 
 @if (TempData["SuccessMessage"] != null)
@@ -73,18 +156,15 @@ else
                             <dd class="col-sm-8">@Model.WeightInKg.Value.ToString("F2") kg</dd>
                         }
                         
-                        <dt class="col-sm-4 text-muted fw-medium"><i class="fas fa-map-marker-alt me-2"></i>Current Location</dt>
+                        <dt class="col-sm-4 text-muted fw-medium"><i class="fas fa-map-marker-alt me-2"></i>Current Coords</dt>
                         <dd class="col-sm-8">
                             @if (Model.Latitude.HasValue && Model.Longitude.HasValue)
                             {
                                 @($"Lat: {Model.Latitude.Value.ToString("F5", CultureInfo.InvariantCulture)}, Lon: {Model.Longitude.Value.ToString("F5", CultureInfo.InvariantCulture)}")
-                                <a href="@($"https://www.google.com/maps?q={Model.Latitude.Value.ToString(CultureInfo.InvariantCulture)},{Model.Longitude.Value.ToString(CultureInfo.InvariantCulture)}")" target="_blank" class="ms-2 small text-decoration-none">
-                                    <i class="fas fa-external-link-alt"></i> Show on Map
-                                </a>
                             }
                             else
                             {
-                                @("Location N/A")
+                                @("Coordinates N/A")
                             }
                         </dd>
 
@@ -149,7 +229,7 @@ else
                 </div>
                 <div class="card-body p-0">
                     <div class="row g-0">
-                        <div class="col-md-6 border-end border-light-gray">
+                        <div class="col-md-6 border-end-md border-light-gray">
                             <div class="p-4">
                                 <h6 class="text-success fw-semibold mb-3"><i class="fas fa-map-marker-alt me-2"></i>Origin Address</h6>
                                 @if (Model.OriginAddress != null)
@@ -181,17 +261,35 @@ else
         </div>
     </div>
 
+    @if (mapLocations.Any(loc => ((dynamic)loc).lat != null && ((dynamic)loc).lon != null))
+    {
+        <div class="card shadow-custom mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-route me-2"></i>Package Route & Current Location</h5>
+            </div>
+            <div class="card-body map-container-wrapper">
+                 <div id="packageMap"></div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info mt-4 shadow-sm">
+            <i class="fas fa-map-marked-alt me-2"></i> Map data is not available for this package as no location history with coordinates has been recorded.
+        </div>
+    }
+
 
     <div class="card shadow-custom mt-4">
         <div class="card-header">
-            <h5 class="mb-0"><i class="fas fa-history me-2"></i>Package History</h5>
+            <h5 class="mb-0"><i class="fas fa-history me-2"></i>Package History Log</h5>
         </div>
-        <div class="card-body p-0"> @* Remove padding for full-width table *@
+        <div class="card-body p-0">
             @if (Model.History != null && Model.History.Any())
             {
                 <div class="table-responsive">
                     <table class="table table-striped table-hover modern-table mb-0">
-                        <thead class="table-light"> @* Using table-light for a softer header within card *@
+                        <thead class="table-light">
                             <tr>
                                 <th><i class="fas fa-calendar-day me-1"></i>Date & Time</th>
                                 <th><i class="fas fa-info-circle me-1"></i>Status</th>
@@ -201,7 +299,7 @@ else
                         <tbody>
                             @foreach (var historyEntry in Model.History.OrderByDescending(h => h.Timestamp))
                             {
-                                <tr class="timeline-item-like @(historyEntry.Status?.Name?.ToLower().Replace(" ", "-"))">
+                                <tr>
                                     <td>@historyEntry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
                                     <td>
                                         <span class="badge @GetStatusBadgeClass(historyEntry.Status?.Name)">
@@ -238,7 +336,7 @@ else
     </div>
 
     <hr class="my-4"/>
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
         <a href="@Url.Action("ActivePackages", "Courier")" class="btn btn-outline-secondary btn-lg shadow-sm">
             <i class="fas fa-arrow-left me-2"></i>Back to Package List
         </a>
@@ -254,18 +352,108 @@ else
 @functions {
     private string GetStatusBadgeClass(string? statusName)
     {
-        if (string.IsNullOrEmpty(statusName)) return "bg-secondary text-white"; // Default from Bootstrap
+        if (string.IsNullOrEmpty(statusName)) return "bg-secondary text-white";
         return statusName.ToLowerInvariant() switch
         {
-            "sent" => "badge-info", // Uses your theme's --info-blue based color
-            "new order" => "badge-secondary", // Bootstrap default
-            "processing" => "badge-processing", // From your theme
-            "in delivery" => "badge-in-delivery", // From your theme (yellow)
-            "in transit" => "badge-in-transit", // From your theme (yellow)
-            "delivered" => "badge-delivered", // From your theme
-            "failed" => "badge-failed", // From your theme
-            "cancelled" => "badge-cancelled", // From your theme
-            _ => "bg-primary text-white" // A generic fallback using Bootstrap
+            "sent" => "badge-info",
+            "new order" => "badge-secondary",
+            "processing" => "badge-processing",
+            "in delivery" => "badge-in-delivery",
+            "in transit" => "badge-in-transit",
+            "delivered" => "badge-delivered",
+            "failed" => "badge-failed",
+            "cancelled" => "badge-cancelled",
+            _ => "bg-primary text-white"
         };
     }
+}
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const locationsData = @Html.Raw(mapLocationsJson);
+            const validLocations = locationsData.filter(loc => loc.lat != null && loc.lon != null);
+
+            if (validLocations.length > 0) {
+                const mapElement = document.getElementById('packageMap');
+                if (!mapElement) {
+                    console.error("Map container 'packageMap' not found.");
+                    return;
+                }
+                
+                // Determine initial center and bounds
+                let mapBounds = L.latLngBounds();
+                validLocations.forEach(loc => mapBounds.extend([loc.lat, loc.lon]));
+                
+                let initialCenter = mapBounds.getCenter();
+                let initialZoom = 10; // Default zoom
+
+                if (validLocations.length === 1) { // If only one point, center on it and zoom in more
+                    initialCenter = [validLocations[0].lat, validLocations[0].lon];
+                    initialZoom = 13;
+                }
+
+                const map = L.map('packageMap').setView(initialCenter, initialZoom);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+
+                const historyPoints = [];
+                let currentPackageMarker = null;
+
+                validLocations.forEach((loc, index) => {
+                    const point = [loc.lat, loc.lon];
+                    historyPoints.push(point);
+
+                    let markerOptions = {};
+                    let popupContent = `<p><strong>Status:</strong> ${loc.status}<br/><strong>Time:</strong> ${loc.timestamp}</p>`;
+
+                    if (loc.isCurrent) {
+                        // Custom icon for current location
+                        markerOptions.icon = L.icon({
+                            iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x-red.png',
+                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                            iconSize: [25, 41],
+                            iconAnchor: [12, 41],
+                            popupAnchor: [1, -34],
+                            shadowSize: [41, 41]
+                        });
+                        popupContent = `<p><strong>Current Location</strong><br/><strong>Status:</strong> ${loc.status}<br/><strong>Time:</strong> ${loc.timestamp}</p>`;
+                        currentPackageMarker = L.marker(point, markerOptions).addTo(map).bindPopup(popupContent);
+                    } else {
+                         // Standard blue marker for history points
+                        L.marker(point).addTo(map)
+                           .bindPopup(popupContent);
+                    }
+                });
+
+                if (historyPoints.length > 1) {
+                    L.polyline(historyPoints, { color: 'var(--primary-yellow-dark)', weight: 3 }).addTo(map);
+                }
+                
+                if (mapBounds.isValid()) {
+                     map.fitBounds(mapBounds, { padding: [50, 50] }); // Add some padding
+                } else if (validLocations.length === 1) {
+                     map.setView([validLocations[0].lat, validLocations[0].lon], 13);
+                }
+
+
+                // If there's a specific current marker, open its popup
+                if (currentPackageMarker) {
+                   // currentPackageMarker.openPopup(); // Optionally open popup for current location
+                }
+
+            } else {
+                console.log("No valid locations with coordinates to display on map.");
+                 const mapContainer = document.getElementById('packageMap');
+                if(mapContainer){
+                    // mapContainer.innerHTML = '<p class="text-center text-muted p-5">Map data is not available for this package.</p>';
+                }
+            }
+        });
+    </script>
 }
