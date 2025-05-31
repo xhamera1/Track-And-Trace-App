@@ -13,22 +13,19 @@
 ///
 /// Authentication: All endpoints use the ApiAdminAuthorize attribute for secure authentication
 /// Authorization: Admin role required for all operations
-/// Database: Integrates with MySQL database through Entity Framework Core
+/// Business Logic: Handled by StatusDefinitionService for maintainability
 /// Logging: Comprehensive logging for all operations and error handling
-/// Transactions: Database transactions ensure data consistency
 /// Error Handling: Robust error handling with appropriate HTTP status codes
 ///
 /// Author: Generated for Track and Trace System
-/// Version: 1.0
+/// Version: 2.0 - Refactored with Service Layer
 /// </summary>
 ///
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using _10.Data;
 using _10.Models;
 using _10.Models.Api;
 using _10.Attributes;
-using System.ComponentModel.DataAnnotations;
+using _10.Services;
 
 namespace _10.Controllers.Api
 {
@@ -36,19 +33,20 @@ namespace _10.Controllers.Api
     /// REST API controller for managing status definitions in the track and trace system.
     /// Provides CRUD operations for status definitions with admin-only authentication.
     /// All endpoints require valid username and API token authentication.
+    /// Business logic is handled by the StatusDefinitionService.
     /// </summary>
     [ApiController]
     [Route("api/status-definition")]
     public class StatusDefinitionApiController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IStatusDefinitionService _statusDefinitionService;
         private readonly ILogger<StatusDefinitionApiController> _logger;
 
         public StatusDefinitionApiController(
-            ApplicationDbContext context,
+            IStatusDefinitionService statusDefinitionService,
             ILogger<StatusDefinitionApiController> logger)
         {
-            _context = context;
+            _statusDefinitionService = statusDefinitionService;
             _logger = logger;
         }
 
@@ -73,17 +71,12 @@ namespace _10.Controllers.Api
 
             try
             {
-                var statusDefinitions = await _context.StatusDefinitions
-                    .AsNoTracking()
-                    .OrderBy(sd => sd.StatusId)
-                    .ToListAsync();
-
-                var statusDefinitionDtos = statusDefinitions.Select(MapToDto);
+                var statusDefinitions = await _statusDefinitionService.GetAllStatusDefinitionsAsync();
 
                 _logger.LogInformation("Admin user {Username} retrieved {Count} status definitions",
-                    authenticatedUser.Username, statusDefinitions.Count);
+                    authenticatedUser.Username, statusDefinitions.Count());
 
-                return Ok(statusDefinitionDtos);
+                return Ok(statusDefinitions);
             }
             catch (Exception ex)
             {
@@ -115,9 +108,7 @@ namespace _10.Controllers.Api
 
             try
             {
-                var statusDefinition = await _context.StatusDefinitions
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(sd => sd.StatusId == id);
+                var statusDefinition = await _statusDefinitionService.GetStatusDefinitionByIdAsync(id);
 
                 if (statusDefinition == null)
                 {
@@ -126,12 +117,10 @@ namespace _10.Controllers.Api
                     return NotFound(new { message = $"Status definition with ID {id} not found." });
                 }
 
-                var statusDefinitionDto = MapToDto(statusDefinition);
-
                 _logger.LogInformation("Admin user {Username} retrieved status definition {StatusId}",
                     authenticatedUser.Username, id);
 
-                return Ok(statusDefinitionDto);
+                return Ok(statusDefinition);
             }
             catch (Exception ex)
             {
@@ -164,44 +153,32 @@ namespace _10.Controllers.Api
                 return StatusCode(500, new { message = "Authentication error - user not found in context." });
             }
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Check if status definition with the same name already exists
-                var existingStatusDefinition = await _context.StatusDefinitions
-                    .FirstOrDefaultAsync(sd => sd.Name.ToLower() == request.Name.ToLower());
+                var result = await _statusDefinitionService.CreateStatusDefinitionAsync(request);
 
-                if (existingStatusDefinition != null)
+                if (!result.IsSuccess)
                 {
-                    _logger.LogWarning("Admin user {Username} attempted to create status definition with duplicate name: {Name}",
-                        authenticatedUser.Username, request.Name);
-                    return BadRequest(new { message = $"Status definition with name '{request.Name}' already exists." });
+                    if (result.ErrorCode == "CONFLICT")
+                    {
+                        _logger.LogWarning("Admin user {Username} attempted to create status definition with duplicate name: {Name}",
+                            authenticatedUser.Username, request.Name);
+                        return BadRequest(new { message = result.ErrorMessage });
+                    }
+
+                    return BadRequest(new { message = result.ErrorMessage });
                 }
 
-                // Create new status definition
-                var statusDefinition = new StatusDefinition
-                {
-                    Name = request.Name.Trim(),
-                    Description = request.Description.Trim()
-                };
-
-                _context.StatusDefinitions.Add(statusDefinition);
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                var statusDefinitionDto = MapToDto(statusDefinition);
-
                 _logger.LogInformation("Admin user {Username} created new status definition with ID {StatusId} and name '{Name}'",
-                    authenticatedUser.Username, statusDefinition.StatusId, statusDefinition.Name);
+                    authenticatedUser.Username, result.Data!.StatusId, result.Data.Name);
 
                 return CreatedAtAction(
                     nameof(GetStatusDefinition),
-                    new { id = statusDefinition.StatusId },
-                    statusDefinitionDto);
+                    new { id = result.Data.StatusId },
+                    result.Data);
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
                 _logger.LogError(ex, "Error creating status definition for admin user {Username} with name '{Name}'",
                     authenticatedUser.Username, request.Name);
                 return StatusCode(500, new { message = "Internal server error occurred while creating the status definition." });
@@ -232,49 +209,36 @@ namespace _10.Controllers.Api
                 return StatusCode(500, new { message = "Authentication error - user not found in context." });
             }
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Find the existing status definition
-                var statusDefinition = await _context.StatusDefinitions
-                    .FirstOrDefaultAsync(sd => sd.StatusId == id);
+                var result = await _statusDefinitionService.UpdateStatusDefinitionAsync(id, request);
 
-                if (statusDefinition == null)
+                if (!result.IsSuccess)
                 {
-                    _logger.LogWarning("Status definition with ID {StatusId} not found for update by admin user {Username}",
-                        id, authenticatedUser.Username);
-                    return NotFound(new { message = $"Status definition with ID {id} not found." });
+                    if (result.ErrorCode == "NOT_FOUND")
+                    {
+                        _logger.LogWarning("Status definition with ID {StatusId} not found for update by admin user {Username}",
+                            id, authenticatedUser.Username);
+                        return NotFound(new { message = result.ErrorMessage });
+                    }
+
+                    if (result.ErrorCode == "CONFLICT")
+                    {
+                        _logger.LogWarning("Admin user {Username} attempted to update status definition {StatusId} with duplicate name: {Name}",
+                            authenticatedUser.Username, id, request.Name);
+                        return BadRequest(new { message = result.ErrorMessage });
+                    }
+
+                    return BadRequest(new { message = result.ErrorMessage });
                 }
-
-                // Check if another status definition with the same name already exists (excluding current one)
-                var existingStatusDefinition = await _context.StatusDefinitions
-                    .FirstOrDefaultAsync(sd => sd.StatusId != id && sd.Name.ToLower() == request.Name.ToLower());
-
-                if (existingStatusDefinition != null)
-                {
-                    _logger.LogWarning("Admin user {Username} attempted to update status definition {StatusId} with duplicate name: {Name}",
-                        authenticatedUser.Username, id, request.Name);
-                    return BadRequest(new { message = $"Another status definition with name '{request.Name}' already exists." });
-                }
-
-                // Update the status definition
-                statusDefinition.Name = request.Name.Trim();
-                statusDefinition.Description = request.Description.Trim();
-
-                _context.StatusDefinitions.Update(statusDefinition);
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                var statusDefinitionDto = MapToDto(statusDefinition);
 
                 _logger.LogInformation("Admin user {Username} updated status definition {StatusId} with name '{Name}'",
-                    authenticatedUser.Username, id, statusDefinition.Name);
+                    authenticatedUser.Username, id, result.Data!.Name);
 
-                return Ok(statusDefinitionDto);
+                return Ok(result.Data);
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
                 _logger.LogError(ex, "Error updating status definition {StatusId} for admin user {Username}",
                     id, authenticatedUser.Username);
                 return StatusCode(500, new { message = "Internal server error occurred while updating the status definition." });
@@ -299,74 +263,40 @@ namespace _10.Controllers.Api
                 return StatusCode(500, new { message = "Authentication error - user not found in context." });
             }
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Find the existing status definition
-                var statusDefinition = await _context.StatusDefinitions
-                    .FirstOrDefaultAsync(sd => sd.StatusId == id);
+                var result = await _statusDefinitionService.DeleteStatusDefinitionAsync(id);
 
-                if (statusDefinition == null)
+                if (!result.IsSuccess)
                 {
-                    _logger.LogWarning("Status definition with ID {StatusId} not found for deletion by admin user {Username}",
-                        id, authenticatedUser.Username);
-                    return NotFound(new { message = $"Status definition with ID {id} not found." });
+                    if (result.ErrorCode == "NOT_FOUND")
+                    {
+                        _logger.LogWarning("Status definition with ID {StatusId} not found for deletion by admin user {Username}",
+                            id, authenticatedUser.Username);
+                        return NotFound(new { message = result.ErrorMessage });
+                    }
+
+                    if (result.ErrorCode == "CONFLICT")
+                    {
+                        _logger.LogWarning("Admin user {Username} attempted to delete status definition {StatusId} that is in use",
+                            authenticatedUser.Username, id);
+                        return BadRequest(new { message = result.ErrorMessage });
+                    }
+
+                    return BadRequest(new { message = result.ErrorMessage });
                 }
 
-                // Check if there are any packages using this status
-                var packagesUsingStatus = await _context.Packages
-                    .AnyAsync(p => p.StatusId == id);
+                _logger.LogInformation("Admin user {Username} deleted status definition {StatusId}",
+                    authenticatedUser.Username, id);
 
-                if (packagesUsingStatus)
-                {
-                    _logger.LogWarning("Admin user {Username} attempted to delete status definition {StatusId} '{Name}' that is in use by packages",
-                        authenticatedUser.Username, id, statusDefinition.Name);
-                    return BadRequest(new { message = $"Cannot delete status definition '{statusDefinition.Name}' because it is currently used by one or more packages." });
-                }
-
-                // Check if there are any package histories using this status
-                var packageHistoriesUsingStatus = await _context.PackageHistories
-                    .AnyAsync(ph => ph.StatusId == id);
-
-                if (packageHistoriesUsingStatus)
-                {
-                    _logger.LogWarning("Admin user {Username} attempted to delete status definition {StatusId} '{Name}' that is in use by package histories",
-                        authenticatedUser.Username, id, statusDefinition.Name);
-                    return BadRequest(new { message = $"Cannot delete status definition '{statusDefinition.Name}' because it is referenced in package history records." });
-                }
-
-                // Delete the status definition
-                _context.StatusDefinitions.Remove(statusDefinition);
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                _logger.LogInformation("Admin user {Username} deleted status definition {StatusId} with name '{Name}'",
-                    authenticatedUser.Username, id, statusDefinition.Name);
-
-                return Ok(new { message = $"Status definition '{statusDefinition.Name}' has been successfully deleted." });
+                return Ok(new { message = result.Data });
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
                 _logger.LogError(ex, "Error deleting status definition {StatusId} for admin user {Username}",
                     id, authenticatedUser.Username);
                 return StatusCode(500, new { message = "Internal server error occurred while deleting the status definition." });
             }
-        }
-
-        /// <summary>
-        /// Maps a StatusDefinition entity to a StatusDefinitionDto
-        /// </summary>
-        /// <param name="statusDefinition">The status definition entity</param>
-        /// <returns>StatusDefinitionDto</returns>
-        private static StatusDefinitionDto MapToDto(StatusDefinition statusDefinition)
-        {
-            return new StatusDefinitionDto
-            {
-                StatusId = statusDefinition.StatusId,
-                Name = statusDefinition.Name,
-                Description = statusDefinition.Description
-            };
         }
     }
 }

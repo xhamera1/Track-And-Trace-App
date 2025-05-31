@@ -28,6 +28,12 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<ICourierService, CourierService>();
 builder.Services.AddScoped<IPackageAuthorizationService, PackageAuthorizationService>();
 builder.Services.AddScoped<IPackageLocationService, PackageLocationService>();
+builder.Services.AddScoped<IPackageManagementService, PackageManagementService>();
+
+// Register API Services
+builder.Services.AddScoped<IStatusDefinitionService, StatusDefinitionService>();
+builder.Services.AddScoped<IPackageService, PackageService>();
+builder.Services.AddScoped<IPackageHistoryService, PackageHistoryService>();
 
 builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>();
 
