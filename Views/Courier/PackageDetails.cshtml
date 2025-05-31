@@ -1,7 +1,7 @@
 @model _10.Models.Package
 @using Microsoft.AspNetCore.Http
 @using System.Globalization
-@using System.Text.Json; 
+@using System.Text.Json;
 
 @{
     ViewData["Title"] = Model != null ? $"Package Details: {Model.TrackingNumber}" : "Package Details";
@@ -38,7 +38,7 @@
       crossorigin="" />
 <style>
     #packageMap {
-        height: 450px; 
+        height: 450px;
         width: 100%;
         border-radius: var(--border-radius-lg);
         box-shadow: var(--shadow-md);
@@ -60,14 +60,14 @@
     <p class="lead">Detailed information, location history, and current position of the selected package.</p>
 </div>
 
-@if (TempData["SuccessMessage"] != null)
+@* @if (TempData["SuccessMessage"] != null)
 {
     <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
         <i class="fas fa-check-circle me-2"></i>
         @TempData["SuccessMessage"]
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
-}
+} *@
 @if (TempData["ErrorMessage"] != null)
 {
     <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
@@ -118,7 +118,7 @@ else
                             <dt class="col-sm-4 text-muted fw-medium"><i class="fas fa-weight-hanging me-2"></i>Weight</dt>
                             <dd class="col-sm-8">@Model.WeightInKg.Value.ToString("F2") kg</dd>
                         }
-                        
+
                         <dt class="col-sm-4 text-muted fw-medium"><i class="fas fa-map-marker-alt me-2"></i>Current Coordinates</dt>
                         <dd class="col-sm-8">
                             @if (Model.Latitude.HasValue && Model.Longitude.HasValue)
@@ -316,7 +316,7 @@ else
 @functions {
     private string GetStatusBadgeClass(string? statusName)
     {
-        if (string.IsNullOrEmpty(statusName)) return "bg-secondary text-white"; 
+        if (string.IsNullOrEmpty(statusName)) return "bg-secondary text-white";
         return statusName.ToLowerInvariant() switch
         {
             "sent" => "badge-info",
@@ -346,25 +346,25 @@ else
                 // console.log('Map container not found on this page.');
                 return;
             }
-            
+
             if (historyPointsJson.length === 0 && !currentLocationJson) {
                  // console.log('No location data available for the map.');
                  // The container for the map might be hidden by Razor logic already
                  return;
             }
 
-            var mapCenter = [20, 0]; 
+            var mapCenter = [20, 0];
             var mapZoom = 2;
             var allLatLngs = [];
 
             if (historyPointsJson.length > 0) {
                 mapCenter = [historyPointsJson[0].lat, historyPointsJson[0].lng];
-                mapZoom = 10; 
+                mapZoom = 10;
             } else if (currentLocationJson) {
                 mapCenter = [currentLocationJson.lat, currentLocationJson.lng];
-                mapZoom = 13; 
+                mapZoom = 13;
             }
-            
+
             var map = L.map('packageMap').setView(mapCenter, mapZoom);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -379,10 +379,10 @@ else
                 iconUrl: '/images/leaflet/marker-icon.png',
                 iconRetinaUrl: '/images/leaflet/marker-icon-2x.png',
                 shadowUrl: '/images/leaflet/marker-shadow.png',
-                iconSize:    [25, 41], 
-                iconAnchor:  [12, 41], 
-                popupAnchor: [1, -34], 
-                shadowSize:  [41, 41]  
+                iconSize:    [25, 41],
+                iconAnchor:  [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize:  [41, 41]
             });
 
             var currentIcon = L.icon({
@@ -394,7 +394,7 @@ else
                 popupAnchor: [1, -34],
                 shadowSize:  [41, 41]
             });
-            
+
             var polylinePoints = [];
 
             historyPointsJson.forEach(function(point, index) {
@@ -409,7 +409,7 @@ else
             if (currentLocationJson) {
                 var currentLatLng = L.latLng(currentLocationJson.lat, currentLocationJson.lng);
                 allLatLngs.push(currentLatLng);
-                
+
                 // Add current location to polyline if it's the latest point
                 var isCurrentLatest = true;
                 if(historyPointsJson.length > 0) {
@@ -420,21 +420,21 @@ else
                     //    isCurrentLatest = false;
                     // }
                     // Simplified: if current is different from last history point, add to polyline
-                     if (polylinePoints.length > 0 && 
+                     if (polylinePoints.length > 0 &&
                         (polylinePoints[polylinePoints.length-1].lat === currentLatLng.lat && polylinePoints[polylinePoints.length-1].lng === currentLatLng.lng)) {
                         isCurrentLatest = false; // Current is same as last history point
                      }
                 }
-                if(isCurrentLatest && (polylinePoints.length === 0 || 
+                if(isCurrentLatest && (polylinePoints.length === 0 ||
                     (polylinePoints[polylinePoints.length-1].lat !== currentLatLng.lat || polylinePoints[polylinePoints.length-1].lng !== currentLatLng.lng))) {
                    polylinePoints.push(currentLatLng);
                 }
 
 
-                L.marker(currentLatLng, {icon: currentIcon, zIndexOffset: 1000 }) 
+                L.marker(currentLatLng, {icon: currentIcon, zIndexOffset: 1000 })
                     .addTo(map)
                     .bindPopup("<b>Current Status:</b> " + currentLocationJson.status + "<br><b>Location:</b> " + currentLatLng.lat.toFixed(5) + ", " + currentLatLng.lng.toFixed(5))
-                    .openPopup(); 
+                    .openPopup();
             }
 
             if (polylinePoints.length > 1) {
@@ -444,7 +444,7 @@ else
             if (allLatLngs.length > 0) {
                 map.fitBounds(L.latLngBounds(allLatLngs), { padding: [40, 40] }); // Added padding
             } else if (!currentLocationJson && historyPointsJson.length === 0) {
-                map.setView([51.505, -0.09], 2); 
+                map.setView([51.505, -0.09], 2);
             }
         });
     </script>

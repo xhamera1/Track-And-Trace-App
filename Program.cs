@@ -26,6 +26,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 );
 
 builder.Services.AddScoped<ICourierService, CourierService>();
+builder.Services.AddScoped<ICourierBusinessService, CourierBusinessService>();
 builder.Services.AddScoped<IPackageAuthorizationService, PackageAuthorizationService>();
 builder.Services.AddScoped<IPackageLocationService, PackageLocationService>();
 builder.Services.AddScoped<IPackageManagementService, PackageManagementService>();

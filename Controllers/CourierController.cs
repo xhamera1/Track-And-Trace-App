@@ -1,37 +1,47 @@
 ﻿// File: Controllers/CourierController.cs
-using _10.Data;
+using _10.Attributes; // For PackageAccessAuthorizeAttribute
 using _10.Models; // For Package, User, StatusDefinition, CourierUpdatePackageStatusViewModel
 using _10.Services; // For authorization service
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace _10.Controllers
 {
+    /// <summary>
+    /// Controller for courier-specific operations with comprehensive package access protection.
+    ///
+    /// SECURITY FEATURES:
+    /// - All actions require Courier or Admin role via [Authorize(Roles = "Courier,Admin")]
+    /// - Package-specific actions (PackageDetails, UpdateStatus) use PackageAccessAuthorizeAttribute
+    ///   to ensure only assigned couriers and admins can access specific packages
+    /// - The PackageAccessAuthorizeAttribute performs authorization at the action level and
+    ///   pre-loads authorized packages for optimal performance
+    /// - Unauthorized access attempts are logged and redirected appropriately
+    ///
+    /// AUTHORIZATION FLOW:
+    /// 1. User must be authenticated and have Courier or Admin role
+    /// 2. For package-specific actions, PackageAccessAuthorizeAttribute verifies:
+    ///    - Admin users: Full access to all packages
+    ///    - Courier users: Access only to packages assigned to them (AssignedCourierId matches user ID)
+    /// 3. Authorized packages are pre-loaded and cached in HttpContext.Items["AuthorizedPackage"]
+    /// 4. Action methods use the pre-authorized package for optimal performance and security
+    /// </summary>
     [Authorize(Roles = "Courier,Admin")]
     public class CourierController : Controller
     {
-        private readonly ApplicationDbContext _context;
         private readonly ILogger<CourierController> _logger;
-        private readonly IPackageAuthorizationService _authorizationService;
-        private readonly IPackageLocationService _packageLocationService;
+        private readonly ICourierBusinessService _courierBusinessService;
 
         public CourierController(
-            ApplicationDbContext context,
             ILogger<CourierController> logger,
-            IPackageAuthorizationService authorizationService,
-            IPackageLocationService packageLocationService)
+            ICourierBusinessService courierBusinessService)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
-            _packageLocationService = packageLocationService ?? throw new ArgumentNullException(nameof(packageLocationService));
+            _courierBusinessService = courierBusinessService ?? throw new ArgumentNullException(nameof(courierBusinessService));
         }
 
         private int GetCurrentUserId()
@@ -68,23 +78,21 @@ namespace _10.Controllers
             try
             {
                 var courierId = GetCurrentUserId();
-                var activeStatusNames = new List<string> { "Sent", "In Delivery" };
+                var result = await _courierBusinessService.GetActivePackagesAsync(courierId);
 
-                var activePackages = await _context.Packages
-                    .Where(p => p.AssignedCourierId == courierId && p.CurrentStatus != null && activeStatusNames.Contains(p.CurrentStatus.Name))
-                    .Include(p => p.OriginAddress)
-                    .Include(p => p.DestinationAddress)
-                    .Include(p => p.CurrentStatus)
-                    .OrderByDescending(p => p.SubmissionDate)
-                    .AsNoTracking()
-                    .ToListAsync();
+                if (!result.IsSuccess)
+                {
+                    _logger.LogError("Error in ActivePackages: {ErrorMessage}", result.ErrorMessage);
+                    TempData["ErrorMessage"] = result.ErrorMessage;
+                    return RedirectToAction("Index", "Home");
+                }
 
                 ViewData["Title"] = "Active Packages for Delivery";
-                return View("PackageList", activePackages);
+                return View("PackageList", result.Data);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Error in ActivePackages while fetching courier ID or data.");
+                _logger.LogError(ex, "Error in ActivePackages while fetching courier ID.");
                 TempData["ErrorMessage"] = ex.Message;
                 return RedirectToAction("Index", "Home");
             }
@@ -103,21 +111,21 @@ namespace _10.Controllers
             try
             {
                 var courierId = GetCurrentUserId();
-                var deliveredPackages = await _context.Packages
-                    .Where(p => p.AssignedCourierId == courierId && p.CurrentStatus != null && p.CurrentStatus.Name == "Delivered")
-                    .Include(p => p.OriginAddress)
-                    .Include(p => p.DestinationAddress)
-                    .Include(p => p.CurrentStatus)
-                    .OrderByDescending(p => p.DeliveryDate)
-                    .AsNoTracking()
-                    .ToListAsync();
+                var result = await _courierBusinessService.GetDeliveredPackagesAsync(courierId);
+
+                if (!result.IsSuccess)
+                {
+                    _logger.LogError("Error in DeliveredPackages: {ErrorMessage}", result.ErrorMessage);
+                    TempData["ErrorMessage"] = result.ErrorMessage;
+                    return RedirectToAction("Index", "Home");
+                }
 
                 ViewData["Title"] = "Delivered Packages";
-                return View("PackageList", deliveredPackages);
+                return View("PackageList", result.Data);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Error in DeliveredPackages while fetching courier ID or data.");
+                _logger.LogError(ex, "Error in DeliveredPackages while fetching courier ID.");
                 TempData["ErrorMessage"] = ex.Message;
                 return RedirectToAction("Index", "Home");
             }
@@ -136,21 +144,21 @@ namespace _10.Controllers
             try
             {
                 var courierId = GetCurrentUserId();
-                var allAssignedPackages = await _context.Packages
-                    .Where(p => p.AssignedCourierId == courierId)
-                    .Include(p => p.OriginAddress)
-                    .Include(p => p.DestinationAddress)
-                    .Include(p => p.CurrentStatus)
-                    .OrderByDescending(p => p.SubmissionDate)
-                    .AsNoTracking()
-                    .ToListAsync();
+                var result = await _courierBusinessService.GetAllAssignedPackagesAsync(courierId);
+
+                if (!result.IsSuccess)
+                {
+                    _logger.LogError("Error in AllMyPackages: {ErrorMessage}", result.ErrorMessage);
+                    TempData["ErrorMessage"] = result.ErrorMessage;
+                    return RedirectToAction("Index", "Home");
+                }
 
                 ViewData["Title"] = "All My Assigned Packages";
-                return View("PackageList", allAssignedPackages);
+                return View("PackageList", result.Data);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Error in AllMyPackages while fetching courier ID or data.");
+                _logger.LogError(ex, "Error in AllMyPackages while fetching courier ID.");
                 TempData["ErrorMessage"] = ex.Message;
                 return RedirectToAction("Index", "Home");
             }
@@ -162,8 +170,17 @@ namespace _10.Controllers
             }
         }
 
+        /// <summary>
+        /// Displays detailed information about a specific package.
+        ///
+        /// AUTHORIZATION: Only assigned couriers and admins can access package details.
+        /// The PackageAccessAuthorizeAttribute ensures proper authorization and pre-loads the package.
+        /// </summary>
+        /// <param name="id">Package ID to display details for</param>
+        /// <returns>Package details view or appropriate error response</returns>
         // GET: /Courier/PackageDetails/5
         [HttpGet]
+        [PackageAccessAuthorize(PackageAccessType.AssignedCourier)]
         public async Task<IActionResult> PackageDetails(int? id)
         {
             if (id == null)
@@ -174,45 +191,46 @@ namespace _10.Controllers
 
             try
             {
+                // The package has already been authorized and loaded by the PackageAccessAuthorizeAttribute
+                var authorizedPackage = HttpContext.Items["AuthorizedPackage"] as Package;
+
+                if (authorizedPackage != null)
+                {
+                    _logger.LogInformation("Displaying package details for package {PackageId} to user {UserId}",
+                        authorizedPackage.PackageId, GetCurrentUserId());
+                    return View(authorizedPackage);
+                }
+
+                // Fallback to the original logic if the attribute didn't set the package
                 var courierId = GetCurrentUserId();
                 var userRole = GetCurrentUserRole();
+                var result = await _courierBusinessService.GetPackageDetailsAsync(id.Value, courierId, userRole);
 
-                var package = await _context.Packages
-                    .Include(p => p.SenderUser)
-                    .Include(p => p.RecipientUser)
-                    .Include(p => p.OriginAddress)
-                    .Include(p => p.DestinationAddress)
-                    .Include(p => p.CurrentStatus)
-                    .Include(p => p.History).ThenInclude(h => h.Status)
-                    .Include(p => p.AssignedCourier) // Include assigned courier for authorization
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(p => p.PackageId == id.Value);
-
-                if (package == null)
+                if (!result.IsSuccess)
                 {
-                    return NotFound();
+                    if (result.ErrorCode == "NOT_FOUND")
+                    {
+                        return NotFound();
+                    }
+
+                    if (result.ErrorCode == "UNAUTHORIZED")
+                    {
+                        TempData["ErrorMessage"] = "You are not authorized to access this package.";
+                        return RedirectToAction(nameof(ActivePackages));
+                    }
+
+                    _logger.LogError("Error in PackageDetails: {ErrorMessage}", result.ErrorMessage);
+                    TempData["ErrorMessage"] = result.ErrorMessage;
+                    return RedirectToAction("Index", "Home");
                 }
 
-                var authResult = _authorizationService.GetAuthorizationResult(package, courierId, userRole);
-                if (!authResult.IsAuthorized)
-                {
-                    _logger.LogWarning("Courier {CourierId} with role {UserRole} denied access to package {PackageId}: {Reason}",
-                        courierId, userRole, package.PackageId, authResult.Reason);
-
-                    TempData["ErrorMessage"] = $"Access denied: {authResult.Reason}";
-                    return RedirectToAction(nameof(ActivePackages));
-                }
-
-                _logger.LogInformation("Courier {CourierId} ({AccessType}) accessing package {PackageId} details",
-                    courierId, authResult.AccessType, package.PackageId);
-
-                return View(package);
+                return View(result.Data);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Error in PackageDetails while fetching courier ID or data for package {PackageId}.", id.Value);
-                TempData["ErrorMessage"] = ex.Message;
-                return RedirectToAction("Index", "Home");
+                _logger.LogError(ex, "Error in PackageDetails while fetching courier ID for package {PackageId}.", id.Value);
+                TempData["ErrorMessage"] = "Authentication error occurred. Please log in again.";
+                return RedirectToAction("Login", "Auth");
             }
             catch (Exception ex)
             {
@@ -224,6 +242,7 @@ namespace _10.Controllers
 
         // GET: /Courier/UpdateStatus/5
         [HttpGet]
+        [PackageAccessAuthorize(PackageAccessType.AssignedCourier)]
         public async Task<IActionResult> UpdateStatus(int? id)
         {
             if (id == null)
@@ -231,70 +250,71 @@ namespace _10.Controllers
                 _logger.LogWarning("UpdateStatus (GET) called without an ID.");
                 return NotFound("Package ID not provided.");
             }
+
             try
             {
-                var courierId = GetCurrentUserId();
-                var userRole = GetCurrentUserRole();
+                // The package has already been authorized and loaded by the PackageAccessAuthorizeAttribute
+                var authorizedPackage = HttpContext.Items["AuthorizedPackage"] as Package;
 
-                var package = await _context.Packages
-                    .Include(p => p.CurrentStatus)
-                    .Include(p => p.AssignedCourier) 
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(p => p.PackageId == id.Value);
-
-                if (package == null)
+                if (authorizedPackage != null)
                 {
-                    return NotFound();
+                    // Use the authorized package to prepare the view model
+                    var courierId = GetCurrentUserId();
+                    var userRole = GetCurrentUserRole();
+                    var result = await _courierBusinessService.PrepareUpdateStatusViewModelAsync(authorizedPackage.PackageId, courierId, userRole);
+
+                    if (!result.IsSuccess)
+                    {
+                        if (result.ErrorCode == "CONFLICT")
+                        {
+                            TempData["InfoMessage"] = result.ErrorMessage;
+                            return RedirectToAction(nameof(PackageDetails), new { id = authorizedPackage.PackageId });
+                        }
+
+                        _logger.LogError("Error in UpdateStatus (GET): {ErrorMessage}", result.ErrorMessage);
+                        TempData["ErrorMessage"] = result.ErrorMessage;
+                        return RedirectToAction("Index", "Home");
+                    }
+
+                    _logger.LogInformation("Displaying update status form for package {PackageId} to user {UserId}",
+                        authorizedPackage.PackageId, courierId);
+                    return View(result.Data);
                 }
 
-                if (!_authorizationService.IsAuthorizedToModifyPackage(package, courierId, userRole))
+                // Fallback to the original logic if the attribute didn't set the package
+                var fallbackCourierId = GetCurrentUserId();
+                var fallbackUserRole = GetCurrentUserRole();
+                var fallbackResult = await _courierBusinessService.PrepareUpdateStatusViewModelAsync(id.Value, fallbackCourierId, fallbackUserRole);
+
+                if (!fallbackResult.IsSuccess)
                 {
-                    _logger.LogWarning("Courier {CourierId} denied access to modify package {PackageId}", courierId, package.PackageId);
-                    TempData["ErrorMessage"] = "You are not authorized to update this package status.";
-                    return RedirectToAction(nameof(ActivePackages));
+                    if (fallbackResult.ErrorCode == "NOT_FOUND")
+                    {
+                        return NotFound();
+                    }
+
+                    if (fallbackResult.ErrorCode == "UNAUTHORIZED")
+                    {
+                        TempData["ErrorMessage"] = fallbackResult.ErrorMessage;
+                        return RedirectToAction(nameof(ActivePackages));
+                    }
+
+                    if (fallbackResult.ErrorCode == "CONFLICT")
+                    {
+                        TempData["InfoMessage"] = fallbackResult.ErrorMessage;
+                        return RedirectToAction(nameof(PackageDetails), new { id = id.Value });
+                    }
+
+                    _logger.LogError("Error in UpdateStatus (GET): {ErrorMessage}", fallbackResult.ErrorMessage);
+                    TempData["ErrorMessage"] = fallbackResult.ErrorMessage;
+                    return RedirectToAction("Index", "Home");
                 }
 
-                if (package.CurrentStatus?.Name == "Delivered")
-                {
-                    TempData["InfoMessage"] = "This package has already been delivered and its status cannot be changed further through this form.";
-                    return RedirectToAction(nameof(PackageDetails), new { id = package.PackageId });
-                }
-
-                List<string> allowedNewStatusNames = new List<string>();
-                if (package.CurrentStatus?.Name == "Sent")
-                {
-                    allowedNewStatusNames.Add("In Delivery");
-                    allowedNewStatusNames.Add("Delivered");
-                }
-                else if (package.CurrentStatus?.Name == "In Delivery")
-                {
-                    allowedNewStatusNames.Add("In Delivery");
-                    allowedNewStatusNames.Add("Delivered");
-                }
-
-                var viewModel = new CourierUpdatePackageStatusViewModel
-                {
-                    PackageId = package.PackageId,
-                    TrackingNumber = package.TrackingNumber,
-                    CurrentStatusName = package.CurrentStatus?.Description,
-                    NewStatusId = package.StatusId,
-                    CurrentLongitude = package.Longitude,
-                    CurrentLatitude = package.Latitude,
-                    NewLongitude = package.Longitude,
-                    NewLatitude = package.Latitude,
-                    Notes = package.Notes,
-                    AvailableStatuses = await _context.StatusDefinitions
-                                               .Where(s => allowedNewStatusNames.Contains(s.Name))
-                                               .OrderBy(s => s.Description)
-                                               .Select(s => new SelectListItem { Value = s.StatusId.ToString(), Text = s.Description })
-                                               .ToListAsync()
-                };
-
-                return View(viewModel);
+                return View(fallbackResult.Data);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Error in UpdateStatus (GET) while fetching courier ID or data for package {PackageId}.", id.Value);
+                _logger.LogError(ex, "Error in UpdateStatus (GET) while fetching courier ID for package {PackageId}.", id.Value);
                 TempData["ErrorMessage"] = ex.Message;
                 return RedirectToAction("Index", "Home");
             }
@@ -309,6 +329,7 @@ namespace _10.Controllers
         // POST: /Courier/UpdateStatus/5
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [PackageAccessAuthorize(PackageAccessType.AssignedCourier, packageIdParameterName: "id")]
         public async Task<IActionResult> UpdateStatus(int id, CourierUpdatePackageStatusViewModel viewModel)
         {
             if (id != viewModel.PackageId)
@@ -316,219 +337,77 @@ namespace _10.Controllers
                 return BadRequest("Package ID mismatch.");
             }
 
-            var courierId = GetCurrentUserId();
-            Package? packageToUpdate = null; 
-
-            async Task PopulateViewModelForError(CourierUpdatePackageStatusViewModel vm)
+            try
             {
-                var currentPackageData = await _context.Packages
-                                                   .Include(p => p.CurrentStatus)
-                                                   .AsNoTracking()
-                                                   .FirstOrDefaultAsync(p => p.PackageId == vm.PackageId);
-                if (currentPackageData != null)
+                // The package has already been authorized by the PackageAccessAuthorizeAttribute
+                var authorizedPackage = HttpContext.Items["AuthorizedPackage"] as Package;
+                var courierId = GetCurrentUserId();
+                var userRole = GetCurrentUserRole();
+
+                if (ModelState.IsValid)
                 {
-                    vm.TrackingNumber = currentPackageData.TrackingNumber;
-                    vm.CurrentStatusName = currentPackageData.CurrentStatus?.Description;
-                    vm.CurrentLongitude = currentPackageData.Longitude;
-                    vm.CurrentLatitude = currentPackageData.Latitude;
-                }
+                    var result = await _courierBusinessService.UpdatePackageStatusAsync(viewModel, courierId, userRole);
 
-                List<string> allowedNewStatusNamesOnError = new List<string>();
-                if (currentPackageData?.CurrentStatus?.Name == "Sent")
-                {
-                    allowedNewStatusNamesOnError.Add("In Delivery");
-                    allowedNewStatusNamesOnError.Add("Delivered");
-                }
-                else if (currentPackageData?.CurrentStatus?.Name == "In Delivery")
-                {
-                    allowedNewStatusNamesOnError.Add("In Delivery"); 
-                    allowedNewStatusNamesOnError.Add("Delivered");
-                }
-
-                vm.AvailableStatuses = await _context.StatusDefinitions
-                                           .Where(s => allowedNewStatusNamesOnError.Contains(s.Name))
-                                           .OrderBy(s => s.Description)
-                                           .Select(s => new SelectListItem { Value = s.StatusId.ToString(), Text = s.Description })
-                                           .ToListAsync();
-            }
-
-
-            if (ModelState.IsValid)
-            {
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                try
-                {
-                    var userRole = GetCurrentUserRole();
-
-                    packageToUpdate = await _context.Packages
-                        .Include(p => p.CurrentStatus)
-                        .Include(p => p.OriginAddress)  
-                        .Include(p => p.DestinationAddress) 
-                        .Include(p => p.AssignedCourier)  
-                        .FirstOrDefaultAsync(p => p.PackageId == viewModel.PackageId);
-
-                    if (packageToUpdate == null)
+                    if (result.IsSuccess)
                     {
-                        await transaction.RollbackAsync();
+                        var package = result.Data!;
+                        TempData["SuccessMessage"] = $"Package {package.TrackingNumber} status successfully updated.";
+                        _logger.LogInformation("User {UserId} successfully updated status for package {PackageId}",
+                            courierId, package.PackageId);
+                        return RedirectToAction(nameof(PackageDetails), new { id = package.PackageId });
+                    }
+
+                    // Handle different types of failures
+                    if (result.ErrorCode == "NOT_FOUND")
+                    {
                         ModelState.AddModelError(string.Empty, "Package not found.");
-                        await PopulateViewModelForError(viewModel);
-                        return View(viewModel);
                     }
-
-                    if (!_authorizationService.IsAuthorizedToModifyPackage(packageToUpdate, courierId, userRole))
+                    else if (result.ErrorCode == "UNAUTHORIZED")
                     {
-                        await transaction.RollbackAsync();
-                        TempData["ErrorMessage"] = "You are not authorized to update this package.";
-                        _logger.LogWarning("Courier {CourierId} (Role: {UserRole}) attempt to modify package {PackageId} denied.", courierId, userRole, packageToUpdate.PackageId);
-                        await PopulateViewModelForError(viewModel);
-                        return View(viewModel);
+                        // This should not happen since we already authorized via attribute, but handle gracefully
+                        _logger.LogWarning("Unexpected authorization error in UpdateStatus POST for package {PackageId} and user {UserId}: {ErrorMessage}",
+                            viewModel.PackageId, courierId, result.ErrorMessage);
+                        TempData["ErrorMessage"] = result.ErrorMessage;
+                        return RedirectToAction(nameof(ActivePackages));
                     }
-
-                    var newStatus = await _context.StatusDefinitions.FindAsync(viewModel.NewStatusId);
-                    if (newStatus == null)
+                    else if (result.ErrorCode == "VALIDATION_ERROR")
                     {
-                        await transaction.RollbackAsync();
-                        ModelState.AddModelError(nameof(viewModel.NewStatusId), "The selected new status is invalid.");
-                        await PopulateViewModelForError(viewModel);
-                        return View(viewModel);
+                        ModelState.AddModelError(string.Empty, result.ErrorMessage!);
                     }
-
-                    if (packageToUpdate.CurrentStatus?.Name == "Delivered" && newStatus.Name != "Delivered")
+                    else if (result.ErrorCode == "CONFLICT")
                     {
-                        await transaction.RollbackAsync();
-                        ModelState.AddModelError(nameof(viewModel.NewStatusId), "Cannot change the status of a package that has already been delivered, unless re-affirming 'Delivered' status with new notes/location.");
-                        await PopulateViewModelForError(viewModel);
-                        return View(viewModel);
+                        ModelState.AddModelError(string.Empty, result.ErrorMessage!);
                     }
-
-                    bool statusChanged = packageToUpdate.StatusId != viewModel.NewStatusId;
-                    bool locationChangedByUser = false;
-
-                    decimal? finalLatitude = packageToUpdate.Latitude; 
-                    decimal? finalLongitude = packageToUpdate.Longitude; 
-
-                    if (viewModel.NewLatitude.HasValue && viewModel.NewLongitude.HasValue)
+                    else
                     {
-                        finalLatitude = viewModel.NewLatitude.Value;
-                        finalLongitude = viewModel.NewLongitude.Value;
-                        locationChangedByUser = true;
-                        _logger.LogInformation("Package {PackageId}: Using directly provided coordinates Lat={Lat}, Lon={Lon}", packageToUpdate.PackageId, finalLatitude, finalLongitude);
+                        ModelState.AddModelError(string.Empty, result.ErrorMessage ?? "An unexpected error occurred.");
                     }
-                    else if (viewModel.HasNewLocationAddress())
-                    {
-                        _logger.LogInformation("Package {PackageId}: Attempting to geocode provided address: {Street}, {City}, {Zip}, {Country}",
-                                               packageToUpdate.PackageId, viewModel.NewLocationStreet, viewModel.NewLocationCity, viewModel.NewLocationZipCode, viewModel.NewLocationCountry);
-                        var addressToGeocode = new Address
-                        {
-                            Street = viewModel.NewLocationStreet!,
-                            City = viewModel.NewLocationCity!,
-                            ZipCode = viewModel.NewLocationZipCode!,
-                            Country = viewModel.NewLocationCountry!
-                        };
-                        var geocodingResult = await _packageLocationService.GeocodeAddressAsync(addressToGeocode);
-
-                        if (geocodingResult.IsSuccess && geocodingResult.Latitude.HasValue && geocodingResult.Longitude.HasValue)
-                        {
-                            finalLatitude = geocodingResult.Latitude.Value;
-                            finalLongitude = geocodingResult.Longitude.Value;
-                            locationChangedByUser = true;
-                             _logger.LogInformation("Package {PackageId}: Successfully geocoded provided address to Lat={Lat}, Lon={Lon}", packageToUpdate.PackageId, finalLatitude, finalLongitude);
-                        }
-                        else
-                        {
-                            await transaction.RollbackAsync();
-                            var geocodeError = $"Could not geocode the provided address: {geocodingResult.ErrorMessage ?? "Unknown error."}";
-                            ModelState.AddModelError(nameof(viewModel.NewLocationStreet), geocodeError);
-                            _logger.LogWarning("Package {PackageId}: Geocoding failed for provided address. Error: {Error}", packageToUpdate.PackageId, geocodeError);
-                            await PopulateViewModelForError(viewModel);
-                            return View(viewModel);
-                        }
-                    }
-                    else if (newStatus.Name == "Delivered" && packageToUpdate.DestinationAddress != null)
-                    {
-                         _logger.LogInformation("Package {PackageId}: Status changed to 'Delivered'. Attempting to geocode destination address.", packageToUpdate.PackageId);
-                        var geocodingResult = await _packageLocationService.GeocodeAddressAsync(packageToUpdate.DestinationAddress);
-                        if (geocodingResult.IsSuccess && geocodingResult.Latitude.HasValue && geocodingResult.Longitude.HasValue)
-                        {
-                            finalLatitude = geocodingResult.Latitude.Value;
-                            finalLongitude = geocodingResult.Longitude.Value;
-                            locationChangedByUser = true;
-                            _logger.LogInformation("Package {PackageId}: Geocoded destination for 'Delivered' status to Lat={Lat}, Lon={Lon}", packageToUpdate.PackageId, finalLatitude, finalLongitude);
-                        }
-                         else
-                        {
-                             _logger.LogWarning("Package {PackageId}: Failed to geocode destination address for 'Delivered' status. Error: {Error}", packageToUpdate.PackageId, geocodingResult.ErrorMessage);
-                        }
-                    }
-
-
-                    bool notesChanged = packageToUpdate.Notes != viewModel.Notes;
-
-                    bool finalLocationIsDifferent = packageToUpdate.Latitude != finalLatitude || packageToUpdate.Longitude != finalLongitude;
-
-                    packageToUpdate.StatusId = newStatus.StatusId; 
-                    packageToUpdate.Longitude = finalLongitude;
-                    packageToUpdate.Latitude = finalLatitude;
-                    packageToUpdate.Notes = viewModel.Notes;
-
-                    if (newStatus.Name == "Delivered" && packageToUpdate.DeliveryDate == null)
-                    {
-                        packageToUpdate.DeliveryDate = DateTime.UtcNow;
-                    }
-
-                    if (statusChanged || finalLocationIsDifferent || notesChanged ||
-                        (newStatus.Name == "In Delivery" && packageToUpdate.CurrentStatus?.Name == "In Delivery"))
-                    {
-                        var packageHistoryEntry = new PackageHistory
-                        {
-                            PackageId = packageToUpdate.PackageId,
-                            StatusId = newStatus.StatusId,
-                            Timestamp = DateTime.UtcNow,
-                            Longitude = finalLongitude,
-                            Latitude = finalLatitude
-                        };
-                        _context.PackageHistories.Add(packageHistoryEntry);
-                        _logger.LogInformation("Package {PackageId}: PackageHistory entry created for status {StatusName}.", packageToUpdate.PackageId, newStatus.Name);
-                    }
-
-                    _context.Packages.Update(packageToUpdate);
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-
-                    _logger.LogInformation("Courier {CourierId} successfully updated package {PackageId} (Tracking: {TrackingNumber}) to status {NewStatusName}. Location: Lat={Lat}, Lon={Lon}.",
-                                           courierId, packageToUpdate.PackageId, packageToUpdate.TrackingNumber, newStatus.Name, finalLatitude, finalLongitude);
-                    TempData["SuccessMessage"] = $"Package {packageToUpdate.TrackingNumber} status successfully updated to '{newStatus.Description}'.";
-                    return RedirectToAction(nameof(PackageDetails), new { id = packageToUpdate.PackageId });
                 }
-                catch (InvalidOperationException ex) 
+                else
                 {
-                    await transaction.RollbackAsync();
-                    _logger.LogError(ex, "Authorization error in UpdateStatus (POST) for package {PackageId}.", viewModel.PackageId);
-                    ModelState.AddModelError(string.Empty, "An authorization error occurred: " + ex.Message);
+                    _logger.LogWarning("UpdateStatus (POST) for package ID {PackageId} failed due to invalid model state. Errors: {Errors}",
+                        viewModel.PackageId,
+                        string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
                 }
-                catch (DbUpdateConcurrencyException ex)
-                {
-                    await transaction.RollbackAsync();
-                    _logger.LogWarning(ex, "Concurrency conflict while updating package {PackageId}.", viewModel.PackageId);
-                    ModelState.AddModelError(string.Empty, "The package data was modified by another user. Please refresh and try again.");
-                }
-                catch (Exception ex)
-                {
-                    await transaction.RollbackAsync();
-                    _logger.LogError(ex, "Unexpected error in UpdateStatus (POST) for package {PackageId}.", viewModel.PackageId);
-                    ModelState.AddModelError(string.Empty, "An unexpected error occurred while updating the package status.");
-                }
+
+                // Repopulate view model for error display
+                await _courierBusinessService.PopulateViewModelForErrorAsync(viewModel);
+                return View(viewModel);
             }
-            else
+            catch (InvalidOperationException ex)
             {
-                 _logger.LogWarning("UpdateStatus (POST) for package ID {PackageId} failed due to invalid model state. Errors: {Errors}",
-                                   viewModel.PackageId,
-                                   string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
+                _logger.LogError(ex, "Error in UpdateStatus (POST) while fetching courier ID for package {PackageId}.", viewModel.PackageId);
+                TempData["ErrorMessage"] = ex.Message;
+                return RedirectToAction("Index", "Home");
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in UpdateStatus (POST) for package {PackageId}.", viewModel.PackageId);
+                ModelState.AddModelError(string.Empty, "An unexpected error occurred while updating the package status.");
 
-            await PopulateViewModelForError(viewModel); 
-            return View(viewModel);
+                await _courierBusinessService.PopulateViewModelForErrorAsync(viewModel);
+                return View(viewModel);
+            }
         }
-
     }
 }
