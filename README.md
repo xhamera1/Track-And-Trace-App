@@ -153,7 +153,7 @@ All requests to these endpoints should include the `ApiKey` in the HTTP headers:
 * **`DELETE /package/{packageId}`**: Deletes a package by its ID.
 * **`POST /package/{trackingNumber}/status`**: Adds a new status entry to a package's history. Requires a JSON body with new status ID, optional location, and notes.
 
-## Package History (`/api/packagehistory`)
+### Package History (`/api/packagehistory`)
 * **`GET /api/packagehistory`**: Retrieves a list of all package history entries across all packages. (Admin only)
 * **`GET /api/packagehistory/{id}`**: Retrieves the full history for a specific package by its **Package ID**.
 * **`POST /api/packagehistory`**: Creates a new package history entry. Requires a JSON body with details such as `PackageId` and `StatusId`.
