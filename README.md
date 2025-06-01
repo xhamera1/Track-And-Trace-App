@@ -101,27 +101,28 @@ To test the application, you can log in with one of the following demonstration 
 
 **1. Login Page:**
 The main entry point for users to access the system. It features fields for username and password, along with a link to the registration page.
-`![Login Page](./photos/login.png)`
+![Login Page](/photos/login.png)
 
 **2. User Dashboard:**
 The personalized landing page for logged-in users. It displays quick package statistics (sent/received) and provides easy access to common actions like sending a new package or viewing packages for pick-up.
-`![User Dashboard](./photos/user_dashboard.png)`
+![User Dashboard](/photos/user_dashboard.png)
 
 **3. Package Details with Map:**
 A comprehensive view showing all details of a specific package, including sender/recipient information, package characteristics, current status, and a full location history visualized on an interactive map.
-`![Package Details with Map](./photos/package_details.png)`
+![Package Details with Map](/photos/package_details.png)
 
 **4. Courier Package List:**
 The courier's main interface for managing assigned packages. It lists packages, typically filterable by status (e.g., active, delivered), and provides actions to view details or update status.
-`![Courier Package List](./photos/kurier_packages.png)`
+![Courier Package List](/photos/kurier_packages.png)
 
 **5. Courier Update Package Status/Details:**
 The form used by couriers to update the status of a package and its current location. Couriers can input a new address (which is then geocoded) or directly provide coordinates.
-`![Courier Update Package Details](./photos/kurier_update_status.png)`
+![Courier Update Package Details](/photos/kurier_update_status.png)
 
 **6. Admin User Management:**
 The administrator's view for managing user accounts within the system. It typically allows admins to view, create, edit, and delete users.
-`![Admin User Management](./photos/admin_manage_users.png)`
+![Admin User Management](/photos/admin_manage_users.png)
+
 
 
 ## Admin API Endpoints Overview
