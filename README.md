@@ -145,13 +145,13 @@ All requests to these endpoints should include the `ApiKey` in the HTTP headers:
 * **`PUT /addresses/{id}`**: Updates an existing address. Requires a JSON body with fields to be updated.
 * **`DELETE /addresses/{id}`**: Deletes an address by its ID (if not currently in use by users or packages).
 
-### Package Management (`/api/packages`)
-* **`GET /packages`**: Retrieves a list of all packages.
-* **`GET /packages/{trackingNumber}`**: Retrieves detailed information for a specific package by its tracking number.
-* **`POST /packages`**: Creates a new package. Requires a JSON body with package details (senderId, recipientId, addresses, size, etc.).
-* **`PUT /packages/{packageId}`**: Updates an existing package's information.
-* **`DELETE /packages/{packageId}`**: Deletes a package by its ID.
-* **`POST /packages/{trackingNumber}/status`**: Adds a new status entry to a package's history. Requires a JSON body with new status ID, optional location, and notes.
+### Package Management (`/api/package`)
+* **`GET /package`**: Retrieves a list of all packages.
+* **`GET /package/{trackingNumber}`**: Retrieves detailed information for a specific package by its tracking number.
+* **`POST /package`**: Creates a new package. Requires a JSON body with package details (senderId, recipientId, addresses, size, etc.).
+* **`PUT /package/{packageId}`**: Updates an existing package's information.
+* **`DELETE /package/{packageId}`**: Deletes a package by its ID.
+* **`POST /package/{trackingNumber}/status`**: Adds a new status entry to a package's history. Requires a JSON body with new status ID, optional location, and notes.
 
 ### Package History (`/api/packagehistory` or `/api/packages/{trackingNumber}/history`)
 * **`GET /api/packages/{trackingNumber}/history`**: Retrieves the full history for a specific package. 
