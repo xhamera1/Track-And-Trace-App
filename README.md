@@ -153,15 +153,19 @@ All requests to these endpoints should include the `ApiKey` in the HTTP headers:
 * **`DELETE /package/{packageId}`**: Deletes a package by its ID.
 * **`POST /package/{trackingNumber}/status`**: Adds a new status entry to a package's history. Requires a JSON body with new status ID, optional location, and notes.
 
-### Package History (`/api/packagehistory` or `/api/packages/{trackingNumber}/history`)
-* **`GET /api/packages/{trackingNumber}/history`**: Retrieves the full history for a specific package. 
+## Package History (`/api/packagehistory`)
+* **`GET /api/packagehistory`**: Retrieves a list of all package history entries across all packages. (Admin only)
+* **`GET /api/packagehistory/{id}`**: Retrieves the full history for a specific package by its **Package ID**.
+* **`POST /api/packagehistory`**: Creates a new package history entry. Requires a JSON body with details such as `PackageId` and `StatusId`.
+* **`PUT /api/packagehistory/{id}`**: Updates an existing package history entry by its **History Entry ID**. Requires a JSON body with fields to be updated.
+* **`DELETE /api/packagehistory/{id}`**: Deletes a package history entry by its **History Entry ID**.
 
-### Status Definition Management (`/api/statusdefinitions`)
-* **`GET /statusdefinitions`**: Retrieves a list of all package status definitions.
-* **`GET /statusdefinitions/{id}`**: Retrieves details for a specific status definition by its ID.
-* **`POST /statusdefinitions`**: Creates a new status definition. Requires a JSON body with `name` and `description`.
-* **`PUT /statusdefinitions/{id}`**: Updates an existing status definition.
-* **`DELETE /statusdefinitions/{id}`**: Deletes a status definition (if not in use by packages).
+### Status Definition Management (`/api/status-definition`)
+* **`GET /status-definition`**: Retrieves a list of all package status definitions.
+* **`GET /status-definition/{id}`**: Retrieves details for a specific status definition by its ID.
+* **`POST /status-definition`**: Creates a new status definition. Requires a JSON body with `name` and `description`.
+* **`PUT /status-definition/{id}`**: Updates an existing status definition.
+* **`DELETE /status-definition/{id}`**: Deletes a status definition (if not in use by packages).
 
 
 ## License
