@@ -5,9 +5,6 @@ using _10.Models.Api;
 
 namespace _10.Services
 {
-    /// <summary>
-    /// Service implementation for Package History operations
-    /// </summary>
     public class PackageHistoryService : IPackageHistoryService
     {
         private readonly ApplicationDbContext _context;
@@ -45,7 +42,6 @@ namespace _10.Services
         {
             try
             {
-                // First, verify that the package exists
                 var package = await _context.Packages
                     .AsNoTracking()
                     .FirstOrDefaultAsync(p => p.PackageId == packageId);
@@ -99,7 +95,6 @@ namespace _10.Services
                     return ServiceResult<PackageHistoryDto>.ValidationFailure($"Status with ID {request.StatusId} not found.");
                 }
 
-                // Create package history entry
                 var packageHistory = new PackageHistory
                 {
                     PackageId = request.PackageId,
@@ -111,8 +106,6 @@ namespace _10.Services
 
                 _context.PackageHistories.Add(packageHistory);
                 await _context.SaveChangesAsync();
-
-                // Update package's current status and location if this is the latest entry
                 var isLatestEntry = await IsLatestHistoryEntryAsync(packageHistory);
                 if (isLatestEntry)
                 {
@@ -132,7 +125,6 @@ namespace _10.Services
 
                 await transaction.CommitAsync();
 
-                // Load the created package history entry with all includes for DTO mapping
                 var createdHistoryEntry = await _context.PackageHistories
                     .Include(ph => ph.Package)
                     .Include(ph => ph.Status)
@@ -180,8 +172,6 @@ namespace _10.Services
                         return ServiceResult<PackageHistoryDto>.ValidationFailure($"Status with ID {request.StatusId} not found.");
                     }
                 }
-
-                // Update history entry properties
                 if (request.StatusId.HasValue)
                     historyEntry.StatusId = request.StatusId.Value;
 
@@ -330,11 +320,7 @@ namespace _10.Services
 
         #region Private Helper Methods
 
-        /// <summary>
-        /// Check if the given history entry is the latest (most recent) for its package
-        /// </summary>
-        /// <param name="historyEntry">The history entry to check</param>
-        /// <returns>True if this is the latest entry, false otherwise</returns>
+
         private async Task<bool> IsLatestHistoryEntryAsync(PackageHistory historyEntry)
         {
             var latestEntry = await _context.PackageHistories
@@ -346,11 +332,7 @@ namespace _10.Services
             return latestEntry != null && latestEntry.PackageHistoryId == historyEntry.PackageHistoryId;
         }
 
-        /// <summary>
-        /// Map PackageHistory entity to PackageHistoryDto
-        /// </summary>
-        /// <param name="historyEntry">The PackageHistory entity</param>
-        /// <returns>PackageHistoryDto</returns>
+
         private static PackageHistoryDto MapToDto(PackageHistory historyEntry)
         {
             return new PackageHistoryDto

@@ -3,9 +3,7 @@ using _10.Models;
 
 namespace _10.Models.Api
 {
-    /// <summary>
-    /// Data Transfer Object for Package History information
-    /// </summary>
+
     public class PackageHistoryDto
     {
         public int PackageHistoryId { get; set; }
@@ -19,9 +17,7 @@ namespace _10.Models.Api
         public decimal? Latitude { get; set; }
     }
 
-    /// <summary>
-    /// Request model for creating a new package history entry
-    /// </summary>
+
     public class CreatePackageHistoryRequest
     {
         [Required]
@@ -39,9 +35,7 @@ namespace _10.Models.Api
         public DateTime? Timestamp { get; set; }
     }
 
-    /// <summary>
-    /// Request model for updating an existing package history entry
-    /// </summary>
+
     public class UpdatePackageHistoryRequest
     {
         public int? StatusId { get; set; }
@@ -55,9 +49,7 @@ namespace _10.Models.Api
         public DateTime? Timestamp { get; set; }
     }
 
-    /// <summary>
-    /// Response model containing package history entries for a specific package
-    /// </summary>
+
     public class PackageHistoryListDto
     {
         public int PackageId { get; set; }

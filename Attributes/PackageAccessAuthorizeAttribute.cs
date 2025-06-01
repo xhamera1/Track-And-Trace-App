@@ -7,20 +7,11 @@ using System.Security.Claims;
 
 namespace _10.Attributes
 {
-    /// <summary>
-    /// Custom authorization attribute that ensures only authorized users can access package-related actions.
-    /// For courier endpoints, this ensures only assigned couriers and admins can access specific packages.
-    /// </summary>
     public class PackageAccessAuthorizeAttribute : Attribute, IAsyncAuthorizationFilter
     {
         private readonly PackageAccessType _requiredAccessType;
         private readonly string _packageIdParameterName;
 
-        /// <summary>
-        /// Initializes a new instance of the PackageAccessAuthorizeAttribute
-        /// </summary>
-        /// <param name="requiredAccessType">The minimum access type required (e.g., AssignedCourier)</param>
-        /// <param name="packageIdParameterName">The name of the action parameter containing the package ID (default: "id")</param>
         public PackageAccessAuthorizeAttribute(
             PackageAccessType requiredAccessType = PackageAccessType.AssignedCourier,
             string packageIdParameterName = "id")
@@ -31,14 +22,12 @@ namespace _10.Attributes
 
         public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
         {
-            // First, ensure the user is authenticated
             if (!context.HttpContext.User.Identity?.IsAuthenticated == true)
             {
                 context.Result = new UnauthorizedResult();
                 return;
             }
 
-            // Get required services
             var courierBusinessService = context.HttpContext.RequestServices
                 .GetService<ICourierBusinessService>();
             var logger = context.HttpContext.RequestServices
@@ -51,7 +40,6 @@ namespace _10.Attributes
                 return;
             }
 
-            // Extract package ID from route parameters
             int packageId;
             if (!context.RouteData.Values.TryGetValue(_packageIdParameterName, out var packageIdObj) ||
                 !int.TryParse(packageIdObj?.ToString(), out packageId))
@@ -62,7 +50,6 @@ namespace _10.Attributes
                 return;
             }
 
-            // Get current user information
             var userIdString = context.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
             var roleString = context.HttpContext.User.FindFirstValue(ClaimTypes.Role);
 
@@ -77,7 +64,6 @@ namespace _10.Attributes
 
             try
             {
-                // Use the business service to check authorization
                 var result = await courierBusinessService.GetPackageDetailsAsync(packageId, userId, userRole);
 
                 if (!result.IsSuccess)
@@ -93,7 +79,6 @@ namespace _10.Attributes
                         logger.LogWarning("User {UserId} with role {UserRole} denied access to package {PackageId}: {Reason}",
                             userId, userRole, packageId, result.ErrorMessage);
 
-                        // For courier controller, redirect to active packages with error message
                         var controller = context.ActionDescriptor.RouteValues["controller"];
                         if (string.Equals(controller, "Courier", StringComparison.OrdinalIgnoreCase))
                         {
@@ -120,7 +105,6 @@ namespace _10.Attributes
                     return;
                 }
 
-                // Store the package in the context for use by the action method
                 context.HttpContext.Items["AuthorizedPackage"] = result.Data;
 
                 logger.LogDebug("User {UserId} authorized to access package {PackageId}", userId, packageId);

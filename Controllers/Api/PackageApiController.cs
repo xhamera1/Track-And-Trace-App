@@ -1,26 +1,3 @@
-/// <summary>
-/// Comprehensive REST API Controller for Package Management
-///
-/// This controller provides complete CRUD operations for packages in the track and trace system.
-/// All endpoints require admin-level authentication using X-API-Key header.
-///
-/// Available Endpoints:
-/// - GET /api/package - Retrieve all packages (Admin only)
-/// - GET /api/package/{id} - Retrieve specific package by ID (Admin only)
-/// - POST /api/package - Create new package (Admin only)
-/// - PUT /api/package/{id} - Update existing package (Admin only)
-/// - DELETE /api/package/{id} - Delete package (Admin only)
-///
-/// Authentication: All endpoints use the ApiAdminAuthorize attribute for secure authentication
-/// Authorization: Admin role required for all operations
-/// Business Logic: Handled by PackageService for maintainability
-/// Logging: Comprehensive logging for all operations and error handling
-/// Error Handling: Robust error handling with appropriate HTTP status codes
-///
-/// Author: Generated for Track and Trace System
-/// Version: 2.0 - Refactored with Service Layer
-/// </summary>
-///
 using Microsoft.AspNetCore.Mvc;
 using _10.Models;
 using _10.Models.Api;
@@ -29,12 +6,6 @@ using _10.Attributes;
 
 namespace _10.Controllers.Api
 {
-    /// <summary>
-    /// REST API controller for managing packages in the track and trace system.
-    /// Provides CRUD operations for packages with admin-only authentication.
-    /// All endpoints require valid username and API token authentication.
-    /// Business logic is handled by the PackageService.
-    /// </summary>
     [ApiController]
     [Route("api/package")]
     public class PackageApiController : ControllerBase
@@ -53,17 +24,10 @@ namespace _10.Controllers.Api
             _authorizationService = authorizationService;
         }
 
-        /// <summary>
-        /// Get all packages (Admin only)
-        ///
-        /// Authentication: X-API-Key header required
-        /// </summary>
-        /// <returns>List of all packages</returns>
         [HttpGet]
         [ApiAdminAuthorize]
         public async Task<ActionResult<IEnumerable<PackageDto>>> GetAllPackages()
         {
-            // Get the authenticated user from HttpContext
             var authenticatedUser = HttpContext.Items["ApiUser"] as User;
 
             if (authenticatedUser == null)
@@ -88,18 +52,11 @@ namespace _10.Controllers.Api
             }
         }
 
-        /// <summary>
-        /// Get a specific package by ID (Admin only)
-        ///
-        /// Authentication: X-API-Key header required
-        /// </summary>
-        /// <param name="id">Package ID</param>
-        /// <returns>Package details</returns>
+
         [HttpGet("{id}")]
         [ApiAdminAuthorize]
         public async Task<ActionResult<PackageDto>> GetPackage(int id)
         {
-            // Get the authenticated user from HttpContext
             var authenticatedUser = HttpContext.Items["ApiUser"] as User;
 
             if (authenticatedUser == null)
@@ -129,11 +86,6 @@ namespace _10.Controllers.Api
             }
         }
 
-        /// <summary>
-        /// Create a new package (Admin only)
-        /// </summary>
-        /// <param name="request">Package creation request</param>
-        /// <returns>Created package</returns>
         [HttpPost]
         [ApiAdminAuthorize]
         public async Task<ActionResult<PackageDto>> CreatePackage([FromBody] CreatePackageRequest request)
@@ -142,8 +94,6 @@ namespace _10.Controllers.Api
             {
                 return BadRequest(ModelState);
             }
-
-            // Get the authenticated user from HttpContext
             var authenticatedUser = HttpContext.Items["ApiUser"] as User;
 
             if (authenticatedUser == null)
@@ -178,12 +128,6 @@ namespace _10.Controllers.Api
             }
         }
 
-        /// <summary>
-        /// Update an existing package (Admin only)
-        /// </summary>
-        /// <param name="id">Package ID</param>
-        /// <param name="request">Package update request</param>
-        /// <returns>Updated package</returns>
         [HttpPut("{id}")]
         [ApiAdminAuthorize]
         public async Task<ActionResult<PackageDto>> UpdatePackage(int id, [FromBody] UpdatePackageRequest request)
@@ -193,7 +137,6 @@ namespace _10.Controllers.Api
                 return BadRequest(ModelState);
             }
 
-            // Get the authenticated user from HttpContext
             var authenticatedUser = HttpContext.Items["ApiUser"] as User;
 
             if (authenticatedUser == null)
@@ -231,18 +174,11 @@ namespace _10.Controllers.Api
             }
         }
 
-        /// <summary>
-        /// Delete a package (Admin only)
-        ///
-        /// Authentication: X-API-Key header required
-        /// </summary>
-        /// <param name="id">Package ID</param>
-        /// <returns>Success confirmation</returns>
+
         [HttpDelete("{id}")]
         [ApiAdminAuthorize]
         public async Task<IActionResult> DeletePackage(int id)
         {
-            // Get the authenticated user from HttpContext
             var authenticatedUser = HttpContext.Items["ApiUser"] as User;
 
             if (authenticatedUser == null)

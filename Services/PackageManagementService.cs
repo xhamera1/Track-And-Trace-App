@@ -5,9 +5,6 @@ using _10.Models;
 
 namespace _10.Services
 {
-    /// <summary>
-    /// Service implementation for managing package operations from the web interface
-    /// </summary>
     public class PackageManagementService : IPackageManagementService
     {
         private readonly ApplicationDbContext _context;
@@ -32,7 +29,6 @@ namespace _10.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Find or create recipient user
                 var recipientUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.RecipientEmail);
                 if (recipientUser == null)
                 {
@@ -51,7 +47,6 @@ namespace _10.Services
                     await _context.SaveChangesAsync();
                 }
 
-                // Find or create addresses
                 var originAddressResult = await FindOrCreateAddressAsync(
                     model.OriginStreet,
                     model.OriginCity,
@@ -76,7 +71,6 @@ namespace _10.Services
                     return ServiceResult<PackageOperationResult>.Failure(destinationAddressResult.ErrorMessage!);
                 }
 
-                // Get initial status
                 var initialStatus = await _context.StatusDefinitions.FirstOrDefaultAsync(s => s.Name == "Sent");
                 if (initialStatus == null)
                 {
@@ -85,14 +79,12 @@ namespace _10.Services
                     return ServiceResult<PackageOperationResult>.Failure("System configuration error: Initial package status not found. Please contact support.");
                 }
 
-                // Assign courier
                 var courierResult = await AssignRandomCourierAsync();
                 if (!courierResult.IsSuccess)
                 {
                     _logger.LogWarning("Failed to assign courier: {Error}", courierResult.ErrorMessage);
                 }
 
-                // Create package
                 var package = new Package
                 {
                     TrackingNumber = GenerateTrackingNumber(),
@@ -110,11 +102,9 @@ namespace _10.Services
                 _context.Packages.Add(package);
                 await _context.SaveChangesAsync();
 
-                // Set address navigation properties for geocoding
                 package.OriginAddress = originAddressResult.Data;
                 package.DestinationAddress = destinationAddressResult.Data;
 
-                // Try to populate coordinates
                 try
                 {
                     var coordinatesPopulated = await _packageLocationService.PopulatePackageCoordinatesAsync(package);
@@ -134,7 +124,6 @@ namespace _10.Services
                     _logger.LogError(ex, "Error during geocoding for package {PackageId}. Package will be created without coordinates.", package.PackageId);
                 }
 
-                // Create package history entry
                 var packageHistory = new PackageHistory
                 {
                     PackageId = package.PackageId,
@@ -261,7 +250,6 @@ namespace _10.Services
                     return ServiceResult<PackageOperationResult>.ValidationFailure("This package is not available for pickup. Only packages with 'In Delivery' status can be picked up.");
                 }
 
-                // Get the "Delivered" status
                 var deliveredStatus = await _context.StatusDefinitions.FirstOrDefaultAsync(s => s.Name == "Delivered");
                 if (deliveredStatus == null)
                 {
@@ -276,7 +264,6 @@ namespace _10.Services
                 decimal? deliveryLatitude = package.Latitude;
                 decimal? deliveryLongitude = package.Longitude;
 
-                // Try to update coordinates based on destination address
                 try
                 {
                     if (package.DestinationAddress == null)
@@ -316,7 +303,6 @@ namespace _10.Services
                     _logger.LogError(ex, "Error during destination geocoding for package {PackageId} delivery", package.PackageId);
                 }
 
-                // Create package history entry
                 var packageHistory = new PackageHistory
                 {
                     PackageId = package.PackageId,
@@ -363,13 +349,11 @@ namespace _10.Services
         {
             try
             {
-                // Normalize the input to handle potential whitespace issues and ensure non-null values
                 street = street?.Trim() ?? string.Empty;
                 city = city?.Trim() ?? string.Empty;
                 zipCode = zipCode?.Trim() ?? string.Empty;
                 country = country?.Trim() ?? string.Empty;
 
-                // Validate required fields
                 if (string.IsNullOrEmpty(street) || string.IsNullOrEmpty(city) ||
                     string.IsNullOrEmpty(zipCode) || string.IsNullOrEmpty(country))
                 {
@@ -403,7 +387,7 @@ namespace _10.Services
                     return ServiceResult<Address>.Success(newAddress);
                 }
                 catch (DbUpdateException ex) when (ex.InnerException?.Message?.Contains("Duplicate entry") == true ||
-                                                 ex.InnerException?.Message?.Contains("uq_address") == true)
+                                                ex.InnerException?.Message?.Contains("uq_address") == true)
                 {
                     _context.Entry(newAddress).State = EntityState.Detached;
 
@@ -435,7 +419,7 @@ namespace _10.Services
 
         public string GenerateTrackingNumber()
         {
-            var prefix = "TT"; // Track & Trace
+            var prefix = "TT";
             var timestamp = DateTime.UtcNow.ToString("yyyyMMdd");
             var random = new Random().Next(1000, 9999);
             return $"{prefix}{timestamp}{random}";

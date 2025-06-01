@@ -3,9 +3,7 @@ using _10.Models;
 
 namespace _10.Models.Api
 {
-    /// <summary>
-    /// Data Transfer Object for Package information
-    /// </summary>
+
     public class PackageDto
     {
         public int PackageId { get; set; }
@@ -29,9 +27,6 @@ namespace _10.Models.Api
         public decimal? Latitude { get; set; }
     }
 
-    /// <summary>
-    /// Data Transfer Object for Address information
-    /// </summary>
     public class AddressDto
     {
         [Required]
@@ -51,9 +46,6 @@ namespace _10.Models.Api
         public string Country { get; set; } = string.Empty;
     }
 
-    /// <summary>
-    /// Request model for creating a new package
-    /// </summary>
     public class CreatePackageRequest
     {
         [Required]
@@ -86,9 +78,7 @@ namespace _10.Models.Api
         public decimal? Latitude { get; set; }
     }
 
-    /// <summary>
-    /// Request model for updating an existing package
-    /// </summary>
+
     public class UpdatePackageRequest
     {
         public int? AssignedCourierId { get; set; }

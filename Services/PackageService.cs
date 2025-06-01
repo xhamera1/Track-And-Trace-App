@@ -5,9 +5,7 @@ using _10.Models.Api;
 
 namespace _10.Services
 {
-    /// <summary>
-    /// Service implementation for Package operations
-    /// </summary>
+
     public class PackageService : IPackageService
     {
         private readonly ApplicationDbContext _context;
@@ -72,14 +70,12 @@ namespace _10.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Validate sender exists
                 var sender = await _context.Users.FirstOrDefaultAsync(u => u.UserId == request.SenderUserId);
                 if (sender == null)
                 {
                     return ServiceResult<PackageDto>.ValidationFailure($"Sender with ID {request.SenderUserId} not found.");
                 }
 
-                // Validate recipient exists
                 var recipient = await _context.Users.FirstOrDefaultAsync(u => u.UserId == request.RecipientUserId);
                 if (recipient == null)
                 {
@@ -97,11 +93,9 @@ namespace _10.Services
                     }
                 }
 
-                // Find or create addresses
                 var originAddress = await FindOrCreateAddressAsync(request.OriginAddress);
                 var destinationAddress = await FindOrCreateAddressAsync(request.DestinationAddress);
 
-                // Get initial status
                 var initialStatus = await _context.StatusDefinitions.FirstOrDefaultAsync(s => s.Name == "Sent");
                 if (initialStatus == null)
                 {
@@ -129,7 +123,6 @@ namespace _10.Services
                 _context.Packages.Add(package);
                 await _context.SaveChangesAsync();
 
-                // Create initial package history entry
                 var packageHistory = new PackageHistory
                 {
                     PackageId = package.PackageId,
@@ -143,7 +136,6 @@ namespace _10.Services
 
                 await transaction.CommitAsync();
 
-                // Load the created package with all includes for DTO mapping
                 var createdPackage = await _context.Packages
                     .Include(p => p.SenderUser)
                     .Include(p => p.RecipientUser)
@@ -223,13 +215,11 @@ namespace _10.Services
                 {
                     package.StatusId = request.StatusId.Value;
 
-                    // If status is being updated to "Delivered", set delivery date
                     if (newStatus!.Name.Equals("Delivered", StringComparison.OrdinalIgnoreCase))
                     {
                         package.DeliveryDate = DateTime.UtcNow;
                     }
 
-                    // Create package history entry for status change
                     var packageHistory = new PackageHistory
                     {
                         PackageId = package.PackageId,
@@ -287,7 +277,6 @@ namespace _10.Services
 
                 _context.PackageHistories.RemoveRange(packageHistories);
 
-                // Delete the package
                 _context.Packages.Remove(package);
 
                 await _context.SaveChangesAsync();

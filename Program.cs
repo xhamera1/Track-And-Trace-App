@@ -9,7 +9,7 @@ builder.Services.AddControllersWithViews()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-        options.JsonSerializerOptions.PropertyNamingPolicy = null; // Keep original property names
+        options.JsonSerializerOptions.PropertyNamingPolicy = null; 
     });
 
 
@@ -31,7 +31,7 @@ builder.Services.AddScoped<IPackageAuthorizationService, PackageAuthorizationSer
 builder.Services.AddScoped<IPackageLocationService, PackageLocationService>();
 builder.Services.AddScoped<IPackageManagementService, PackageManagementService>();
 
-// Register API Services
+
 builder.Services.AddScoped<IStatusDefinitionService, StatusDefinitionService>();
 builder.Services.AddScoped<IPackageService, PackageService>();
 builder.Services.AddScoped<IPackageHistoryService, PackageHistoryService>();
@@ -84,12 +84,10 @@ app.UseAuthentication();
 
 app.UseAuthorization();
 
-// Map both conventional MVC routes and API routes
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-// This will map all controllers including API controllers with attributes
 app.MapControllers();
 
 app.Run();

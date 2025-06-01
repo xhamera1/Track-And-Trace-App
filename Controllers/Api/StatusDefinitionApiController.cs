@@ -1,26 +1,3 @@
-/// <summary>
-/// Comprehensive REST API Controller for Status Definition Management
-///
-/// This controller provides complete CRUD operations for status definitions in the track and trace system.
-/// All endpoints require admin-level authentication using X-API-Key header.
-///
-/// Available Endpoints:
-/// - GET /api/status-definition - Retrieve all status definitions (Admin only)
-/// - GET /api/status-definition/{id} - Retrieve specific status definition by ID (Admin only)
-/// - POST /api/status-definition - Create new status definition (Admin only)
-/// - PUT /api/status-definition/{id} - Update existing status definition (Admin only)
-/// - DELETE /api/status-definition/{id} - Delete status definition (Admin only)
-///
-/// Authentication: All endpoints use the ApiAdminAuthorize attribute for secure authentication
-/// Authorization: Admin role required for all operations
-/// Business Logic: Handled by StatusDefinitionService for maintainability
-/// Logging: Comprehensive logging for all operations and error handling
-/// Error Handling: Robust error handling with appropriate HTTP status codes
-///
-/// Author: Generated for Track and Trace System
-/// Version: 2.0 - Refactored with Service Layer
-/// </summary>
-///
 using Microsoft.AspNetCore.Mvc;
 using _10.Models;
 using _10.Models.Api;
@@ -29,12 +6,7 @@ using _10.Services;
 
 namespace _10.Controllers.Api
 {
-    /// <summary>
-    /// REST API controller for managing status definitions in the track and trace system.
-    /// Provides CRUD operations for status definitions with admin-only authentication.
-    /// All endpoints require valid username and API token authentication.
-    /// Business logic is handled by the StatusDefinitionService.
-    /// </summary>
+
     [ApiController]
     [Route("api/status-definition")]
     public class StatusDefinitionApiController : ControllerBase
@@ -50,17 +22,11 @@ namespace _10.Controllers.Api
             _logger = logger;
         }
 
-        /// <summary>
-        /// Get all status definitions (Admin only)
-        ///
-        /// Authentication: X-API-Key header required
-        /// </summary>
-        /// <returns>List of all status definitions</returns>
+
         [HttpGet]
         [ApiAdminAuthorize]
         public async Task<ActionResult<IEnumerable<StatusDefinitionDto>>> GetAllStatusDefinitions()
         {
-            // Get the authenticated user from HttpContext
             var authenticatedUser = HttpContext.Items["ApiUser"] as User;
 
             if (authenticatedUser == null)
@@ -86,18 +52,11 @@ namespace _10.Controllers.Api
             }
         }
 
-        /// <summary>
-        /// Get a specific status definition by ID (Admin only)
-        ///
-        /// Authentication: X-API-Key header required
-        /// </summary>
-        /// <param name="id">Status definition ID</param>
-        /// <returns>Status definition details</returns>
+
         [HttpGet("{id}")]
         [ApiAdminAuthorize]
         public async Task<ActionResult<StatusDefinitionDto>> GetStatusDefinition(int id)
         {
-            // Get the authenticated user from HttpContext
             var authenticatedUser = HttpContext.Items["ApiUser"] as User;
 
             if (authenticatedUser == null)
@@ -130,11 +89,7 @@ namespace _10.Controllers.Api
             }
         }
 
-        /// <summary>
-        /// Create a new status definition (Admin only)
-        /// </summary>
-        /// <param name="request">Status definition creation request</param>
-        /// <returns>Created status definition</returns>
+
         [HttpPost]
         [ApiAdminAuthorize]
         public async Task<ActionResult<StatusDefinitionDto>> CreateStatusDefinition([FromBody] CreateStatusDefinitionRequest request)
@@ -144,7 +99,6 @@ namespace _10.Controllers.Api
                 return BadRequest(ModelState);
             }
 
-            // Get the authenticated user from HttpContext
             var authenticatedUser = HttpContext.Items["ApiUser"] as User;
 
             if (authenticatedUser == null)
@@ -185,12 +139,7 @@ namespace _10.Controllers.Api
             }
         }
 
-        /// <summary>
-        /// Update an existing status definition (Admin only)
-        /// </summary>
-        /// <param name="id">Status definition ID to update</param>
-        /// <param name="request">Status definition update request</param>
-        /// <returns>Updated status definition</returns>
+
         [HttpPut("{id}")]
         [ApiAdminAuthorize]
         public async Task<ActionResult<StatusDefinitionDto>> UpdateStatusDefinition(int id, [FromBody] UpdateStatusDefinitionRequest request)
@@ -200,7 +149,6 @@ namespace _10.Controllers.Api
                 return BadRequest(ModelState);
             }
 
-            // Get the authenticated user from HttpContext
             var authenticatedUser = HttpContext.Items["ApiUser"] as User;
 
             if (authenticatedUser == null)
@@ -245,16 +193,11 @@ namespace _10.Controllers.Api
             }
         }
 
-        /// <summary>
-        /// Delete a status definition (Admin only)
-        /// </summary>
-        /// <param name="id">Status definition ID to delete</param>
-        /// <returns>Success message</returns>
+
         [HttpDelete("{id}")]
         [ApiAdminAuthorize]
         public async Task<ActionResult> DeleteStatusDefinition(int id)
         {
-            // Get the authenticated user from HttpContext
             var authenticatedUser = HttpContext.Items["ApiUser"] as User;
 
             if (authenticatedUser == null)

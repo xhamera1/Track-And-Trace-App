@@ -2,9 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace _10.Models.Api
 {
-    /// <summary>
-    /// Data Transfer Object for Status Definition information
-    /// </summary>
+
     public class StatusDefinitionDto
     {
         public int StatusId { get; set; }
@@ -18,9 +16,6 @@ namespace _10.Models.Api
         public string Description { get; set; } = string.Empty;
     }
 
-    /// <summary>
-    /// Request model for creating a new status definition
-    /// </summary>
     public class CreateStatusDefinitionRequest
     {
         [Required(ErrorMessage = "Status name is required.")]
@@ -32,9 +27,7 @@ namespace _10.Models.Api
         public string Description { get; set; } = string.Empty;
     }
 
-    /// <summary>
-    /// Request model for updating an existing status definition
-    /// </summary>
+
     public class UpdateStatusDefinitionRequest
     {
         [Required(ErrorMessage = "Status name is required.")]

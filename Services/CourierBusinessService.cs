@@ -6,9 +6,6 @@ using Microsoft.Extensions.Logging;
 
 namespace _10.Services
 {
-    /// <summary>
-    /// Comprehensive business service for courier operations with full business logic
-    /// </summary>
     public class CourierBusinessService : ICourierBusinessService
     {
         private readonly ApplicationDbContext _context;
@@ -36,8 +33,8 @@ namespace _10.Services
 
                 var activePackages = await _context.Packages
                     .Where(p => p.AssignedCourierId == courierId &&
-                               p.CurrentStatus != null &&
-                               activeStatusNames.Contains(p.CurrentStatus.Name))
+                                p.CurrentStatus != null &&
+                                activeStatusNames.Contains(p.CurrentStatus.Name))
                     .Include(p => p.OriginAddress)
                     .Include(p => p.DestinationAddress)
                     .Include(p => p.CurrentStatus)
@@ -64,8 +61,8 @@ namespace _10.Services
             {
                 var deliveredPackages = await _context.Packages
                     .Where(p => p.AssignedCourierId == courierId &&
-                               p.CurrentStatus != null &&
-                               p.CurrentStatus.Name == "Delivered")
+                                p.CurrentStatus != null &&
+                                p.CurrentStatus.Name == "Delivered")
                     .Include(p => p.OriginAddress)
                     .Include(p => p.DestinationAddress)
                     .Include(p => p.CurrentStatus)
@@ -325,7 +322,6 @@ namespace _10.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error populating view model for error for package {PackageId}", viewModel.PackageId);
-                // Ensure we have at least an empty list to avoid further errors
                 viewModel.AvailableStatuses = new List<SelectListItem>();
             }
         }
@@ -370,7 +366,6 @@ namespace _10.Services
             decimal? finalLongitude = package.Longitude;
             bool locationChangedByUser = false;
 
-            // Direct coordinates provided
             if (viewModel.NewLatitude.HasValue && viewModel.NewLongitude.HasValue)
             {
                 finalLatitude = viewModel.NewLatitude.Value;
@@ -380,7 +375,6 @@ namespace _10.Services
                 _logger.LogInformation("Package {PackageId}: Using directly provided coordinates Lat={Lat}, Lon={Lon}",
                     package.PackageId, finalLatitude, finalLongitude);
             }
-            // Address provided for geocoding
             else if (viewModel.HasNewLocationAddress())
             {
                 _logger.LogInformation("Package {PackageId}: Attempting to geocode provided address: {Street}, {City}, {Zip}, {Country}",
@@ -415,7 +409,6 @@ namespace _10.Services
                     return ServiceResult<LocationUpdateResult>.ValidationFailure(geocodeError);
                 }
             }
-            // Auto-geocode destination for delivered packages
             else if (newStatus.Name == "Delivered" && package.DestinationAddress != null)
             {
                 _logger.LogInformation("Package {PackageId}: Status changed to 'Delivered'. Attempting to geocode destination address.",
@@ -459,19 +452,16 @@ namespace _10.Services
                 bool finalLocationIsDifferent = package.Latitude != finalLatitude || package.Longitude != finalLongitude;
                 bool notesChanged = package.Notes != viewModel.Notes;
 
-                // Update package properties
                 package.StatusId = newStatus.StatusId;
                 package.Longitude = finalLongitude;
                 package.Latitude = finalLatitude;
                 package.Notes = viewModel.Notes;
 
-                // Set delivery date for delivered packages
                 if (newStatus.Name == "Delivered" && package.DeliveryDate == null)
                 {
                     package.DeliveryDate = DateTime.UtcNow;
                 }
 
-                // Create history entry if significant changes occurred
                 if (statusChanged || finalLocationIsDifferent || notesChanged ||
                     (newStatus.Name == "In Delivery" && package.CurrentStatus?.Name == "In Delivery"))
                 {
@@ -502,9 +492,6 @@ namespace _10.Services
         #endregion
     }
 
-    /// <summary>
-    /// Helper class for location update results
-    /// </summary>
     internal class LocationUpdateResult
     {
         public decimal? FinalLatitude { get; set; }

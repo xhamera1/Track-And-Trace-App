@@ -5,9 +5,6 @@ using _10.Models.Api;
 
 namespace _10.Services
 {
-    /// <summary>
-    /// Service implementation for Status Definition operations
-    /// </summary>
     public class StatusDefinitionService : IStatusDefinitionService
     {
         private readonly ApplicationDbContext _context;
@@ -61,7 +58,6 @@ namespace _10.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Check if status definition with the same name already exists
                 var existingStatusDefinition = await _context.StatusDefinitions
                     .FirstOrDefaultAsync(sd => sd.Name.ToLower() == request.Name.ToLower());
 
@@ -71,7 +67,6 @@ namespace _10.Services
                     return ServiceResult<StatusDefinitionDto>.Conflict($"Status definition with name '{request.Name}' already exists.");
                 }
 
-                // Create new status definition
                 var statusDefinition = new StatusDefinition
                 {
                     Name = request.Name.Trim(),
@@ -149,7 +144,6 @@ namespace _10.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Find the existing status definition
                 var statusDefinition = await _context.StatusDefinitions
                     .FirstOrDefaultAsync(sd => sd.StatusId == id);
 
@@ -159,7 +153,6 @@ namespace _10.Services
                     return ServiceResult<string>.NotFound("Status definition", id);
                 }
 
-                // Check if there are any packages using this status
                 var packagesUsingStatus = await _context.Packages
                     .AnyAsync(p => p.StatusId == id);
 
@@ -169,7 +162,6 @@ namespace _10.Services
                     return ServiceResult<string>.Conflict($"Cannot delete status definition '{statusDefinition.Name}' because it is currently used by one or more packages.");
                 }
 
-                // Check if there are any package histories using this status
                 var packageHistoriesUsingStatus = await _context.PackageHistories
                     .AnyAsync(ph => ph.StatusId == id);
 
@@ -179,7 +171,6 @@ namespace _10.Services
                     return ServiceResult<string>.Conflict($"Cannot delete status definition '{statusDefinition.Name}' because it is referenced in package history records.");
                 }
 
-                // Delete the status definition
                 _context.StatusDefinitions.Remove(statusDefinition);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -195,12 +186,6 @@ namespace _10.Services
                 throw;
             }
         }
-
-        /// <summary>
-        /// Maps a StatusDefinition entity to a StatusDefinitionDto
-        /// </summary>
-        /// <param name="statusDefinition">The status definition entity</param>
-        /// <returns>StatusDefinitionDto</returns>
         private static StatusDefinitionDto MapToDto(StatusDefinition statusDefinition)
         {
             return new StatusDefinitionDto
