@@ -43,6 +43,7 @@ The system offers a wide range of functionalities tailored to different user rol
 * **Full Access to User and Courier Functionalities.**
 * **User Management:** Ability to create, view, edit, and delete user accounts within the system.
 * **Status Definition Management:** Ability to add, edit, and delete package status definitions.
+* **API Access:** Administrators have privileged access to API endpoints for system management and data retrieval.
 
 ### General and Technical Features
 * **REST API:** Core data operations (packages, users, statuses) exposed via a REST API secured with API keys.
@@ -98,11 +99,51 @@ To test the application, you can log in with one of the following demonstration 
 ## Application Screenshots
 
 **Example Screenshots:**
-* `![Login Page](URL_to_Login_Page_Screenshot.png)`
-* `![User Dashboard](URL_to_User_Dashboard_Screenshot.png)`
-* `![Package Details with Map](URL_to_Package_Details_Map_Screenshot.png)`
-* `![Courier Package List](URL_to_Courier_Package_List_Screenshot.png)`
-* `![Admin User Management](URL_to_Admin_User_Management_Screenshot.png)`
+* `![Login Page](photos/login.png)`
+* `![User Dashboard](photos/user_dashboard.png)`
+* `![Package Details with Map](photos/package_details.png)`
+* `![Courier Package List](photos/kurier_packages.png)`
+* `![Courier Update Package Details](photos/kurier_update_status.png)`
+* `![Admin User Management](photos/admin_manage_users.png)`
+
+
+## Admin API Endpoints Overview
+
+The following API endpoints are available for administrative purposes.
+
+All requests to these endpoints should include the `ApiKey` in the HTTP headers:
+
+### User Management (`/api/users`)
+* **`GET /users`**: Retrieves a list of all users in the system.
+* **`GET /users/{id}`**: Retrieves detailed information for a specific user by their ID.
+* **`POST /users`**: Creates a new user. Requires a JSON body with user details (username, email, password, role, etc.).
+* **`PUT /users/{id}`**: Updates an existing user's information. Requires a JSON body with fields to be updated.
+* **`DELETE /users/{id}`**: Deletes a user by their ID.
+
+### Address Management (`/api/addresses`)
+* **`GET /addresses`**: Retrieves a list of all addresses in the system.
+* **`GET /addresses/{id}`**: Retrieves detailed information for a specific address by its ID.
+* **`POST /addresses`**: Creates a new address. Requires a JSON body with address details (street, city, zipCode, country).
+* **`PUT /addresses/{id}`**: Updates an existing address. Requires a JSON body with fields to be updated.
+* **`DELETE /addresses/{id}`**: Deletes an address by its ID (if not currently in use by users or packages).
+
+### Package Management (`/api/packages`)
+* **`GET /packages`**: Retrieves a list of all packages. Can often be filtered with query parameters (e.g., `?statusId=1&senderUserId=5`).
+* **`GET /packages/{trackingNumber}`**: Retrieves detailed information for a specific package by its tracking number.
+* **`POST /packages`**: Creates a new package. Requires a JSON body with package details (senderId, recipientId, addresses, size, etc.).
+* **`PUT /packages/{packageId}`**: Updates an existing package's information.
+* **`DELETE /packages/{packageId}`**: Deletes a package by its ID.
+* **`POST /packages/{trackingNumber}/status`**: Adds a new status entry to a package's history. Requires a JSON body with new status ID, optional location, and notes.
+
+### Package History (`/api/packagehistory` or `/api/packages/{trackingNumber}/history`)
+* **`GET /api/packages/{trackingNumber}/history`**: Retrieves the full history for a specific package. 
+
+### Status Definition Management (`/api/statusdefinitions`)
+* **`GET /statusdefinitions`**: Retrieves a list of all package status definitions.
+* **`GET /statusdefinitions/{id}`**: Retrieves details for a specific status definition by its ID.
+* **`POST /statusdefinitions`**: Creates a new status definition. Requires a JSON body with `name` and `description`.
+* **`PUT /statusdefinitions/{id}`**: Updates an existing status definition.
+* **`DELETE /statusdefinitions/{id}`**: Deletes a status definition (if not in use by packages).
 
 
 ## License
